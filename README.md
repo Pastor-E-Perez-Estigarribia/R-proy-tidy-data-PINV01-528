@@ -20,5 +20,4 @@ The detailed analysis, quality control results, and tidy datasets can be accesse
 * **Environment:** RStudio.
 
 ---
-**Principal Investigator:** Pastor E. Pérez Estigarribia  
-**Affiliation:** Facultad Politécnica - UNE / Project PINV01-528
+**Affiliation:** Facultad Politécnica - UNA / Project PINV01-528
