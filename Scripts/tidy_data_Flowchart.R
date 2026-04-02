@@ -83,10 +83,16 @@ print(flujo_datos)
 # 3. Exportar el gráfico a PNG de alta resolución (300 DPI ideal para Data Papers)
 # Descomenta las siguientes líneas cuando estés listo para exportar:
 
-# flujo_datos %>%
-#   export_svg() %>%
-#   charToRaw() %>%
-#   rsvg_png("output/fig/data_workflow.png", width = 1200)
+flujo_datos %>%
+   export_svg() %>%
+   charToRaw() %>%
+   rsvg_png("output/fig/data_workflow.png", width = 1200)
 
 # También puedes exportarlo en formato vectorial puro (SVG o PDF):
-flujo_datos %>% export_svg() %>% charToRaw() %>% rsvg_pdf("output/fig/data_workflow.pdf")
+flujo_datos %>% export_svg() %>% charToRaw() %>% 
+  rsvg_pdf("output/fig/data_workflowV2.pdf")
+
+flujo_datos %>% export_svg() %>% charToRaw() %>% 
+  rsvg_svg("output/fig/data_workflow.svg")
+
+
