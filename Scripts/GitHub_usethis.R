@@ -7,4 +7,4 @@ create_github_token()
 gitcreds::gitcreds_set()
 
 # 3. Convierte tu carpeta en un repositorio de GitHub
-use_github()
+usethis::use_github()
