@@ -1,0 +1,26 @@
+timestamp,step,description,rows_affected,variables,extra
+2026-04-02 10:32:52.221909,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20295,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""Gemini_AI.app""]",NA
+2026-04-02 10:40:11.888243,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20295,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""Gemini_AI.app""]","{""files"":[""dataset_final.csv"",""dataset_final.xlsx""]}"
+2026-04-02 10:40:11.913486,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20295,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""Gemini_AI.app""]",NA
+2026-04-02 10:40:12.069012,export_sessionInfo,"Exported sessionInfo to files: sessionInfo_20260402_074011.txt, sessionInfo_20260402_074011.rds",NA,"[""R.version"",""loadedNamespaces""]",NA
+2026-04-02 10:40:12.280694,NA,NA,NA,NA,NA
+2026-04-02 10:40:12.464631,NA,NA,NA,NA,NA
+2026-04-02 10:40:12.479957,NA,NA,NA,NA,NA
+2026-04-02 10:40:12.730753,NA,NA,NA,NA,NA
+2026-04-02 10:40:12.795492,NA,NA,NA,NA,NA
+2026-04-02 10:40:13.185094,NA,NA,NA,NA,NA
+2026-04-02 10:40:13.543827,NA,NA,NA,NA,NA
+2026-04-02 10:40:13.549007,NA,NA,NA,NA,NA
+2026-04-02 10:40:13.560575,qa_integration,QA report executed; outputs: ./logs/qa/SENEPA_taxonomic_QA_report_20260402_074013.xlsx,20295,"[""SPECIES_CLEAN"",""SPECIES_MATCHED"",""CONFIDENCE"",""LAT"",""LONG"",""DATE""]",NA
+2026-04-02 10:41:58.634774,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20295,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""Gemini_AI.app""]","{""files"":[""dataset_final.csv"",""dataset_final.xlsx""]}"
+2026-04-02 10:41:58.660109,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20295,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""Gemini_AI.app""]",NA
+2026-04-02 10:41:58.756297,export_sessionInfo,"Exported sessionInfo to files: sessionInfo_20260402_074158.txt, sessionInfo_20260402_074158.rds",NA,"[""R.version"",""loadedNamespaces""]",NA
+2026-04-02 10:41:59.074311,NA,NA,NA,NA,NA
+2026-04-02 10:41:59.189551,NA,NA,NA,NA,NA
+2026-04-02 10:41:59.20454,NA,NA,NA,NA,NA
+2026-04-02 10:41:59.386238,NA,NA,NA,NA,NA
+2026-04-02 10:41:59.462875,NA,NA,NA,NA,NA
+2026-04-02 10:41:59.837105,NA,NA,NA,NA,NA
+2026-04-02 10:42:00.30729,NA,NA,NA,NA,NA
+2026-04-02 10:42:00.311768,NA,NA,NA,NA,NA
+2026-04-02 10:42:00.322812,qa_integration,QA report executed; outputs: ./logs/qa/SENEPA_taxonomic_QA_report_20260402_074159.xlsx,20295,"[""SPECIES_CLEAN"",""SPECIES_MATCHED"",""CONFIDENCE"",""LAT"",""LONG"",""DATE""]",NA

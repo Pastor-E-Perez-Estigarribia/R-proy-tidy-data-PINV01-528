@@ -11,7 +11,7 @@
 
 <meta name="author" content="peper" />
 
-<meta name="date" content="2026-04-01" />
+<meta name="date" content="2026-04-02" />
 
 <title>Script_tidy_data.R</title>
 
@@ -352,7 +352,7 @@ display: none;
 
 <h1 class="title toc-ignore">Script_tidy_data.R</h1>
 <h4 class="author">peper</h4>
-<h4 class="date">2026-04-01</h4>
+<h4 class="date">2026-04-02</h4>
 
 </div>
 
@@ -373,19 +373,21 @@ require(&#39;pacman&#39;)</code></pre>
 # library(pacman)
 
 
-pacman::p_load(rio,
-               tidyverse,
-               summarytools,
-               readxl,
-               writexl,
-               stringr,
-               sf,
-               sp,
-               terra,
-               openxlsx,
-               dplyr, 
-               taxize,
-               tinytex)
+pacman::p_load(
+  rio,
+  tidyverse,
+  summarytools,
+  readxl,
+  writexl,
+  stringr,
+  sf,
+  sp,
+  terra,
+  openxlsx,
+  dplyr,
+  taxize,
+  tinytex
+)
 
 #tinytex::install_tinytex()   # instala una distribución LaTeX mínima usable por R
 
@@ -1423,9 +1425,11 @@ add_log(
   variables = c(&quot;LAT&quot;, &quot;LONG&quot;)
 )
 
+
+
 # 11. Taxonomic corrections ----
 
-# Cargar tabla de referencia taxonómica 
+# Cargar tabla de referencia taxonómica
 
 
 clean_species_names &lt;- function(x) {
@@ -1450,7 +1454,8 @@ clean_species_names &lt;- function(x) {
     stringr::str_replace_all(&quot;^NA SHANNONI$&quot;, &quot;PSATHYROMYIA SHANNONI&quot;) %&gt;%
     stringr::str_replace_all(&quot;^PSATIROMYIA SHANNONI$&quot;, &quot;PSATHYROMYIA SHANNONI&quot;) %&gt;%
     stringr::str_replace_all(&quot;^ANOPHELES ROOZEBOMII$&quot;, &quot;NYSSORHYNCHUS ROZEBOOMI&quot;) %&gt;% #Anopheles rozeboomi
-    stringr::str_replace_all(&quot;^P.PANSTRONGYLUS GENICULATUS$&quot;, &quot;PANSTRONGYLUS GENICULATUS&quot;) %&gt;% #Panstrongylus geniculatus
+    stringr::str_replace_all(&quot;^P.PANSTRONGYLUS GENICULATUS$&quot;,
+                             &quot;PANSTRONGYLUS GENICULATUS&quot;) %&gt;% #Panstrongylus geniculatus
     # limpieza final
     stringr::str_replace_all(&quot;\\s+&quot;, &quot; &quot;) %&gt;%
     stringr::str_trim() %&gt;%
@@ -1463,9 +1468,10 @@ dataset_final_aux &lt;- dataset_final %&gt;%
   dplyr::rename(SPECIES_RAW = SPECIES) %&gt;%
   dplyr::mutate(
     SPECIES_RAW = toupper(stringr::str_trim(SPECIES_RAW)),
-    DISEASE     = toupper(stringr::str_trim(DISEASE)))%&gt;%
-      dplyr::mutate(SPECIES_CLEAN = clean_species_names(SPECIES_RAW))
-   
+    DISEASE     = toupper(stringr::str_trim(DISEASE))
+  ) %&gt;%
+  dplyr::mutate(SPECIES_CLEAN = clean_species_names(SPECIES_RAW))
+
 
 add_log(
   step = &quot;taxonomic_string_cleaning&quot;,
@@ -1496,7 +1502,8 @@ resolve_species_gbif &lt;- function(species_vec) {
   out &lt;- purrr::map_df(spp_unique, function(x) {
     r &lt;- tryCatch(
       rgbif::name_backbone(name = x),
-      error = function(e) NULL
+      error = function(e)
+        NULL
     )
     
     tibble::tibble(
@@ -1517,7 +1524,9 @@ resolve_species_gbif &lt;- function(species_vec) {
     step = &quot;gbif_name_backbone&quot;,
     description = paste0(
       &quot;Resolved species names using GBIF backbone. &quot;,
-      &quot;Returned &quot;, nrow(out), &quot; rows.&quot;
+      &quot;Returned &quot;,
+      nrow(out),
+      &quot; rows.&quot;
     ),
     rows_affected = nrow(out),
     variables = names(out)
@@ -1611,8 +1620,8 @@ add_log(
 
 #export(dataset_final_gbif_map,&quot;data/processed_data/dataset_final_gbif_map.xlsx&quot;)
 
-taxize_map %&gt;% drop_na(SPECIES_CLEAN) %&gt;% 
-rio::export(&quot;data/processed_data/gbif_map.xlsx&quot;)
+taxize_map %&gt;% drop_na(SPECIES_CLEAN) %&gt;%
+  rio::export(&quot;data/processed_data/gbif_map.xlsx&quot;)
 
 # Import corrected taxonomy data with AI-based app Gemini
 
@@ -1632,7 +1641,192 @@ add_log(
   variables = c(&quot;SPECIES_CLEAN&quot;, names(tax_AI))
 )
 
-# ____________________________________________________________
+# Corregir errors ortograficos en departamentos ----
+
+# --- 0) Ajusta esta ruta si tu CSV está en otra carpeta ---
+data_path &lt;- &quot;data/processed_data/SENEPA_tidy_data_set.csv&quot;
+
+# --- 1) Comprobar qué es &#39;df&#39; y, si es función, reasignarlo leyendo el CSV ---
+if (exists(&quot;df&quot;)) {
+  cat(&quot;class(df):&quot;, paste(class(df), collapse = &quot;, &quot;), &quot;\n&quot;)
+  if (is.function(df) || typeof(df) == &quot;closure&quot;) {
+    message(&quot;&#39;df&#39; es una función. Se va a sobrescribir leyendo el CSV en: &quot;,
+            data_path)
+    df &lt;- readr::read_csv(data_path)
+  } else {
+    message(&quot;&#39;df&#39; existe y no es función; se usará tal cual.&quot;)
+  }
+} else {
+  message(&quot;&#39;df&#39; no existe. Leyendo CSV en: &quot;, data_path)
+  df &lt;- readr::read_csv(data_path)
+}</code></pre>
+<pre><code>## class(df): function</code></pre>
+<pre><code>## &#39;df&#39; es una función. Se va a sobrescribir leyendo el CSV en: data/processed_data/SENEPA_tidy_data_set.csv</code></pre>
+<pre><code>## Rows: 20295 Columns: 28
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr (21): DEPARTMENT, DISTRICT, LOCALITY, DATE, DISEASE, SPECIES_RAW, UTM_HE...
+## dbl  (7): YEAR, UTM_ZONE, UTM_X, UTM_Y, LAT, LONG, CONFIDENCE
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code># --- 2) Bloque seguro: normalizar DEPARTMENT, registrar log y crear dataset_final ---
+# Requisitos: dplyr, stringr, stringi, lubridate, readr
+if (!requireNamespace(&quot;dplyr&quot;, quietly = TRUE))
+  stop(&quot;Instala el paquete dplyr&quot;)
+if (!requireNamespace(&quot;stringr&quot;, quietly = TRUE))
+  stop(&quot;Instala el paquete stringr&quot;)
+if (!requireNamespace(&quot;stringi&quot;, quietly = TRUE))
+  stop(&quot;Instala el paquete stringi&quot;)
+if (!requireNamespace(&quot;lubridate&quot;, quietly = TRUE))
+  stop(&quot;Instala el paquete lubridate&quot;)
+if (!requireNamespace(&quot;readr&quot;, quietly = TRUE))
+  stop(&quot;Instala el paquete readr&quot;)
+
+library(dplyr)
+library(stringr)
+library(stringi)
+library(lubridate)
+library(readr)
+
+log_file &lt;- &quot;department_corrections_log.csv&quot;
+
+add_log &lt;- function(log_file, log_df) {
+  if (!is.data.frame(log_df) || nrow(log_df) == 0) {
+    message(&quot;No hay cambios para registrar en el log.&quot;)
+    return(invisible(NULL))
+  }
+  cols_needed &lt;- c(&quot;row_id&quot;,
+                   &quot;timestamp&quot;,
+                   &quot;departamento_original&quot;,
+                   &quot;departamento_std&quot;,
+                   &quot;note&quot;)
+  missing_cols &lt;- setdiff(cols_needed, names(log_df))
+  if (length(missing_cols) &gt; 0)
+    stop(&quot;Log missing cols: &quot;, paste(missing_cols, collapse = &quot;, &quot;))
+  if (!file.exists(log_file)) {
+    readr::write_csv(log_df, log_file)
+    message(&quot;Log creado: &quot;, log_file, &quot; (&quot;, nrow(log_df), &quot; filas).&quot;)
+  } else {
+    readr::write_csv(log_df, log_file, append = TRUE)
+    message(&quot;Se anexaron &quot;, nrow(log_df), &quot; filas al log: &quot;, log_file)
+  }
+  invisible(NULL)
+}
+
+# Nombres canónicos (ajusta si lo deseas)
+canonical &lt;- c(
+  &quot;ALTO PARANÁ&quot;,
+  &quot;BOQUERÓN&quot;,
+  &quot;CENTRAL&quot;,
+  &quot;CANINDEYÚ&quot;,
+  &quot;GUAIRÁ&quot;,
+  &quot;PRESIDENTE HAYES&quot;,
+  &quot;PARAGUARÍ&quot;,
+  &quot;SAN PEDRO&quot;,
+  &quot;ALTO PARAGUAY&quot;,
+  &quot;AMAMBAY&quot;,
+  &quot;ÑEEMBUCÚ&quot;,
+  &quot;CORDILLERA&quot;,
+  &quot;CAAGUAZÚ&quot;,
+  &quot;CAAZAPÁ&quot;,
+  &quot;MISIONES&quot;,
+  &quot;CONCEPCIÓN&quot;,
+  &quot;ITAPÚA&quot;,
+  &quot;ASUNCIÓN&quot;
+)
+
+# Asegurar df como tibble
+df &lt;- as_tibble(df)
+
+# Normalizar y loggear
+df_work &lt;- df %&gt;%
+  dplyr::mutate(
+    DEPARTMENT_original = as.character(DEPARTMENT),
+    .dept_aux = DEPARTMENT_original %&gt;% replace_na(&quot;&quot;) %&gt;% str_squish() %&gt;% toupper() %&gt;% stringi::stri_trans_general(&quot;Latin-ASCII&quot;),
+    .row_id = dplyr::row_number(),
+    .timestamp = lubridate::now(tzone = &quot;UTC&quot;)
+  ) %&gt;%
+  dplyr::mutate(
+    departamento_std = dplyr::case_when(
+      .dept_aux == &quot;&quot; ~ NA_character_,
+      .dept_aux %in% c(&quot;ALTO PARANA&quot;, &quot;ALTO_PARANA&quot;, &quot;ALTO PARANA &quot;) ~ &quot;ALTO PARANÁ&quot;,
+      .dept_aux %in% c(&quot;BOQUERON&quot;, &quot;BOQUERON &quot;) ~ &quot;BOQUERÓN&quot;,
+      .dept_aux %in% c(&quot;CENTRAL&quot;) ~ &quot;CENTRAL&quot;,
+      .dept_aux %in% c(&quot;CANINDEYU&quot;, &quot;CANINDEYU &quot;) ~ &quot;CANINDEYÚ&quot;,
+      .dept_aux %in% c(&quot;GUAIRA&quot;, &quot;GUIRA&quot;) ~ &quot;GUAIRÁ&quot;,
+      .dept_aux %in% c(
+        &quot;PTE HAYES&quot;,
+        &quot;PDTE HAYES&quot;,
+        &quot;PTE. HAYES&quot;,
+        &quot;PRESIDENTE  HAYES&quot;,
+        &quot;PRESIDENTE HAYES&quot;
+      ) ~ &quot;PRESIDENTE HAYES&quot;,
+      .dept_aux %in% c(&quot;PARAGUARI&quot;, &quot;PARAGUARI &quot;) ~ &quot;PARAGUARÍ&quot;,
+      .dept_aux %in% c(&quot;SAN PEDRO&quot;, &quot;SAN_PEDRO&quot;) ~ &quot;SAN PEDRO&quot;,
+      .dept_aux %in% c(&quot;ALTO PARAGUAY&quot;, &quot;ALTO_PARAGUAY&quot;) ~ &quot;ALTO PARAGUAY&quot;,
+      .dept_aux %in% c(&quot;AMAMBAY&quot;) ~ &quot;AMAMBAY&quot;,
+      .dept_aux %in% c(&quot;NEEMBUCU&quot;, &quot;NEEMBUCU &quot;) ~ &quot;ÑEEMBUCÚ&quot;,
+      .dept_aux %in% c(&quot;CORDILLERA&quot;) ~ &quot;CORDILLERA&quot;,
+      .dept_aux %in% c(&quot;CAAGUAZU&quot;, &quot;CAAGUAZU &quot;) ~ &quot;CAAGUAZÚ&quot;,
+      .dept_aux %in% c(&quot;CAAZAPA&quot;, &quot;CAAZAPA &quot;) ~ &quot;CAAZAPÁ&quot;,
+      .dept_aux %in% c(&quot;MISIONES&quot;) ~ &quot;MISIONES&quot;,
+      .dept_aux %in% c(&quot;CONCEPCION&quot;, &quot;CONCEPCION &quot;) ~ &quot;CONCEPCIÓN&quot;,
+      .dept_aux %in% c(&quot;ITAPUA&quot;, &quot;ITAPUA &quot;) ~ &quot;ITAPÚA&quot;,
+      .dept_aux %in% c(&quot;CAPITAL&quot;, &quot;ASUNCION&quot;, &quot;ASUNCION &quot;) ~ &quot;ASUNCIÓN&quot;,
+      TRUE ~ .dept_aux
+    )
+  )
+
+log_changes &lt;- df_work %&gt;%
+  dplyr::transmute(
+    row_id = .row_id,
+    timestamp = .timestamp,
+    departamento_original = DEPARTMENT_original,
+    departamento_std = departamento_std,
+    note = dplyr::case_when(
+      is.na(departamento_original) &amp;
+        !is.na(departamento_std) ~ &quot;Filled/inferred&quot;,
+      is.na(departamento_original) &amp;
+        is.na(departamento_std) ~ &quot;Original NA - left NA&quot;,
+      !is.na(departamento_original) &amp;
+        (
+          toupper(
+            stringi::stri_trans_general(departamento_original, &quot;Latin-ASCII&quot;)
+          ) != toupper(
+            stringi::stri_trans_general(departamento_std %&gt;% replace_na(&quot;&quot;), &quot;Latin-ASCII&quot;)
+          )
+        ) ~ &quot;Standardized&quot;,
+      TRUE ~ &quot;No change&quot;
+    )
+  ) %&gt;%
+  dplyr::filter(note != &quot;No change&quot;)
+
+# Guardar log
+add_log(log_file, log_changes)</code></pre>
+<pre><code>## Se anexaron 437 filas al log: department_corrections_log.csv</code></pre>
+<pre class="r"><code># Valores no mapeados para revisión
+unmapped_departments &lt;- df_work %&gt;%
+  dplyr::filter(!is.na(.dept_aux) &amp;
+                  !(departamento_std %in% canonical)) %&gt;%
+  dplyr::distinct(DEPARTMENT_original, .dept_aux, departamento_std) %&gt;%
+  dplyr::arrange(.dept_aux)
+
+if (nrow(unmapped_departments) &gt; 0) {
+  message(&quot;Hay valores no mapeados. Revisa &#39;unmapped_departments&#39;.&quot;)
+}</code></pre>
+<pre><code>## Hay valores no mapeados. Revisa &#39;unmapped_departments&#39;.</code></pre>
+<pre class="r"><code># Crear dataset_final con DEPARTMENT corregido
+dataset_final &lt;- df_work %&gt;%
+  dplyr::mutate(DEPARTMENT = departamento_std) %&gt;%
+  dplyr::select(-.dept_aux,-DEPARTMENT_original,-.row_id,-.timestamp,-departamento_std)
+
+message(
+  &quot;Proceso completado: dataset_final creado; filas registradas en log: &quot;,
+  nrow(log_changes)
+)</code></pre>
+<pre><code>## Proceso completado: dataset_final creado; filas registradas en log: 437</code></pre>
+<pre class="r"><code># ____________________________________________________________
 # 11. Export final combined dataset (XLSX + CSV) using rio::export
 # ____________________________________________________________
 
@@ -1645,15 +1839,95 @@ rio::export(dataset_final,
 rio::export(dataset_final,
             &quot;./data/processed_data/SENEPA_tidy_data_set.csv&quot;)
 
-add_log(
+# add_log flexible: acepta data.frame o metadatos nombrados
+library(readr)
+library(dplyr)
+library(lubridate)
+library(jsonlite)</code></pre>
+<pre><code>## 
+## Adjuntando el paquete: &#39;jsonlite&#39;
+## 
+## The following object is masked from &#39;package:purrr&#39;:
+## 
+##     flatten</code></pre>
+<pre class="r"><code># Dependencias
+library(readr)
+library(dplyr)
+library(lubridate)
+library(jsonlite)
+library(tibble)
+
+# Operador auxiliar seguro
+`%||%` &lt;- function(a, b) {
+  if (!is.null(a)) a else b
+}
+
+# add_log flexible: acepta data.frame o metadatos nombrados
+add_log &lt;- function(..., log_file = &quot;process_log.csv&quot;) {
+  args &lt;- list(...)
+  # Caso A: se pasó un data.frame como único argumento
+  if (length(args) == 1 &amp;&amp; is.data.frame(args[[1]])) {
+    log_df &lt;- args[[1]]
+    if (!&quot;timestamp&quot; %in% names(log_df)) {
+      log_df &lt;- dplyr::mutate(log_df, timestamp = as.character(lubridate::now(tzone = &quot;UTC&quot;)))
+    }
+  } else {
+    # Caso B: metadatos nombrados
+    step &lt;- args$step %||% NA_character_
+    description &lt;- args$description %||% NA_character_
+    rows_affected &lt;- args$rows_affected %||% NA_integer_
+    variables &lt;- args$variables %||% NA_character_
+    extra &lt;- args$extra %||% NULL
+    
+    if (!is.null(variables) &amp;&amp; length(variables) &gt; 1) {
+      variables &lt;- jsonlite::toJSON(variables, auto_unbox = TRUE)
+    }
+    extra_json &lt;- if (!is.null(extra)) jsonlite::toJSON(extra, auto_unbox = TRUE) else NA_character_
+    
+    log_df &lt;- tibble::tibble(
+      timestamp = as.character(lubridate::now(tzone = &quot;UTC&quot;)),
+      step = as.character(step),
+      description = as.character(description),
+      rows_affected = as.integer(rows_affected),
+      variables = as.character(variables),
+      extra = as.character(extra_json)
+    )
+  }
+  
+  # Escribir o anexar al CSV
+  if (!file.exists(log_file)) {
+    readr::write_csv(log_df, log_file)
+    message(&quot;Log creado: &quot;, log_file, &quot; (&quot;, nrow(log_df), &quot; filas).&quot;)
+  } else {
+    readr::write_csv(log_df, log_file, append = TRUE)
+    message(&quot;Se anexaron &quot;, nrow(log_df), &quot; filas al log: &quot;, log_file)
+  }
+  invisible(log_df)
+}
+
+# Ejemplo de uso (registro de exportación)
+# Asegúrate de que &#39;dataset_final&#39; exista antes de ejecutar esto
+if (exists(&quot;dataset_final&quot;)) {
+  add_log(
+    step = &quot;export_combined_dataset&quot;,
+    description = &quot;Exported final merged dataset (XLSX + CSV) using rio::export.&quot;,
+    rows_affected = nrow(dataset_final),
+    variables = names(dataset_final),
+    extra = list(files = c(&quot;dataset_final.csv&quot;, &quot;dataset_final.xlsx&quot;)),
+    log_file = &quot;process_log.csv&quot;
+  )
+} else {
+  message(&quot;Objeto &#39;dataset_final&#39; no encontrado: crea &#39;dataset_final&#39; antes de registrar la exportación.&quot;)
+}</code></pre>
+<pre><code>## Se anexaron 1 filas al log: process_log.csv</code></pre>
+<pre class="r"><code>add_log(
   step = &quot;export_combined_dataset&quot;,
   description = &quot;Exported final merged dataset (XLSX + CSV) using rio::export.&quot;,
   rows_affected = nrow(dataset_final),
   variables = names(dataset_final)
-)
-
-
-# Save processing_log (UTF-8)
+)</code></pre>
+<pre><code>## Se anexaron 1 filas al log: process_log.csv</code></pre>
+<pre class="r"><code># Save processing_log (UTF-8)
 if (!dir.exists(&quot;./logs&quot;))
   dir.create(&quot;./logs&quot;, recursive = TRUE)
 # prefer readr::write_csv for reliable UTF-8; rio::export can also be used for CSV but readr is explicit
@@ -1671,7 +1945,8 @@ write.csv(
 <pre class="r"><code># Capturar y exportar sessionInfo() a archivos (texto y RDS) y registrar con add_log
 # Ajusta la carpeta de salida si hace falta
 out_dir &lt;- &quot;logs&quot;
-if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+if (!dir.exists(out_dir))
+  dir.create(out_dir, recursive = TRUE)
 
 # Nombre de archivo con fecha-hora
 ts &lt;- format(Sys.time(), &quot;%Y%m%d_%H%M%S&quot;)
@@ -1687,32 +1962,41 @@ saveRDS(sessionInfo(), file = rds_file)
 # 3) (Opcional) imprimir en consola
 cat(&quot;sessionInfo saved to:\n&quot;, txt_file, &quot;\n&quot;, rds_file, &quot;\n&quot;)</code></pre>
 <pre><code>## sessionInfo saved to:
-##  logs/sessionInfo_20260401_184022.txt 
-##  logs/sessionInfo_20260401_184022.rds</code></pre>
+##  logs/sessionInfo_20260402_074158.txt 
+##  logs/sessionInfo_20260402_074158.rds</code></pre>
 <pre class="r"><code># 4) Registrar en processing_log si existe add_log
 if (exists(&quot;add_log&quot;)) {
   add_log(
     step = &quot;export_sessionInfo&quot;,
-    description = paste0(&quot;Exported sessionInfo to files: &quot;, basename(txt_file), &quot;, &quot;, basename(rds_file)),
+    description = paste0(
+      &quot;Exported sessionInfo to files: &quot;,
+      basename(txt_file),
+      &quot;, &quot;,
+      basename(rds_file)
+    ),
     rows_affected = NA_integer_,
     variables = c(&quot;R.version&quot;, &quot;loadedNamespaces&quot;)
   )
-}
-
-qa_report &lt;- function(
-    df,
-    tax_map = NULL,
-    tax_ai = NULL,
-    out_dir = &quot;./logs/qa&quot;,
-    name_prefix = &quot;qa&quot;,
-    year_range = c(1900, as.integer(format(Sys.Date(), &quot;%Y&quot;))),
-    gbif_conf_threshold = 80,
-    paraguay_bbox = list(lat_min = -28, lat_max = -19, long_min = -63, long_max = -54),
-    add_log = add_log
-) {
+}</code></pre>
+<pre><code>## Se anexaron 1 filas al log: process_log.csv</code></pre>
+<pre class="r"><code>qa_report &lt;- function(df,
+                      tax_map = NULL,
+                      tax_ai = NULL,
+                      out_dir = &quot;./logs/qa&quot;,
+                      name_prefix = &quot;qa&quot;,
+                      year_range = c(1900, as.integer(format(Sys.Date(), &quot;%Y&quot;))),
+                      gbif_conf_threshold = 80,
+                      paraguay_bbox = list(
+                        lat_min = -28,
+                        lat_max = -19,
+                        long_min = -63,
+                        long_max = -54
+                      ),
+                      add_log = add_log) {
   pacman::p_load(dplyr, stringr, janitor, readr, openxlsx, tibble, sf, lubridate)
   
-  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  if (!dir.exists(out_dir))
+    dir.create(out_dir, recursive = TRUE)
   
   # Defensive rename to uppercase columns
   df &lt;- df %&gt;% rename_with(~ toupper(.x))
@@ -1721,7 +2005,10 @@ qa_report &lt;- function(
   
   # Basic overview metrics
   n_unique_species &lt;- df %&gt;% pull(SPECIES_CLEAN) %&gt;% unique() %&gt;% length()
-  add_log(&quot;qa_start&quot;, &quot;Started QA report generation&quot;, n_total, c(&quot;SPECIES_CLEAN&quot;))
+  add_log(&quot;qa_start&quot;,
+          &quot;Started QA report generation&quot;,
+          n_total,
+          c(&quot;SPECIES_CLEAN&quot;))
   
   # Date parsing and year checks
   df &lt;- df %&gt;%
@@ -1730,67 +2017,135 @@ qa_report &lt;- function(
       YEAR2 = ifelse(!is.na(YEAR), as.integer(YEAR), lubridate::year(DATE2))
     )
   bad_dates &lt;- df %&gt;% filter((!is.na(DATE) &amp; is.na(DATE2)) |
-                               (!is.na(YEAR2) &amp; (YEAR2 &lt; year_range[1] | YEAR2 &gt; year_range[2])))
+                               (!is.na(YEAR2) &amp;
+                                  (YEAR2 &lt; year_range[1] |
+                                     YEAR2 &gt; year_range[2])))
   
-  add_log(&quot;qa_dates&quot;, paste0(&quot;Checked dates. Invalid or out of range: &quot;, nrow(bad_dates)),
-          nrow(bad_dates), c(&quot;DATE&quot;,&quot;YEAR&quot;))
-  
-  # Coordinates numeric coercion and basic bounds
-  df &lt;- df %&gt;% mutate(
-    LATn = suppressWarnings(as.numeric(LAT)),
-    LONGn = suppressWarnings(as.numeric(LONG))
+  add_log(
+    &quot;qa_dates&quot;,
+    paste0(&quot;Checked dates. Invalid or out of range: &quot;, nrow(bad_dates)),
+    nrow(bad_dates),
+    c(&quot;DATE&quot;, &quot;YEAR&quot;)
   )
   
+  # Coordinates numeric coercion and basic bounds
+  df &lt;- df %&gt;% mutate(LATn = suppressWarnings(as.numeric(LAT)),
+                      LONGn = suppressWarnings(as.numeric(LONG)))
+  
   bad_coords &lt;- df %&gt;%
-    filter((!is.na(LATn) &amp; (LATn &lt; paraguay_bbox$lat_min | LATn &gt; paraguay_bbox$lat_max)) |
-             (!is.na(LONGn) &amp; (LONGn &lt; paraguay_bbox$long_min | LONGn &gt; paraguay_bbox$long_max)))
+    filter((
+      !is.na(LATn) &amp;
+        (LATn &lt; paraguay_bbox$lat_min |
+           LATn &gt; paraguay_bbox$lat_max)
+    ) |
+      (
+        !is.na(LONGn) &amp;
+          (
+            LONGn &lt; paraguay_bbox$long_min | LONGn &gt; paraguay_bbox$long_max
+          )
+      ))
   
   # Detect possible lat/long swap
   swap_candidates &lt;- df %&gt;%
     filter(!is.na(LATn) &amp; !is.na(LONGn)) %&gt;%
     filter(abs(LATn) &lt;= 90 &amp; abs(LONGn) &lt;= 90) %&gt;%
-    filter(LATn &gt; 0 &amp; LONGn &lt; 0) # heuristic: positive lat in Paraguay unlikely
+    filter(LATn &gt; 0 &amp;
+             LONGn &lt; 0) # heuristic: positive lat in Paraguay unlikely
   
-  add_log(&quot;qa_coords&quot;, paste0(&quot;Coords checks: out_of_bounds=&quot;, nrow(bad_coords),
-                              &quot;; swap_candidates=&quot;, nrow(swap_candidates)),
-          nrow(df), c(&quot;LAT&quot;,&quot;LONG&quot;))
+  add_log(
+    &quot;qa_coords&quot;,
+    paste0(
+      &quot;Coords checks: out_of_bounds=&quot;,
+      nrow(bad_coords),
+      &quot;; swap_candidates=&quot;,
+      nrow(swap_candidates)
+    ),
+    nrow(df),
+    c(&quot;LAT&quot;, &quot;LONG&quot;)
+  )
   
   # Spatial containment using sf if available
   paraguay_sf &lt;- tryCatch({
-    rnaturalearth::ne_countries(country = &quot;Paraguay&quot;, scale = &quot;medium&quot;, returnclass = &quot;sf&quot;) %&gt;%
+    rnaturalearth::ne_countries(country = &quot;Paraguay&quot;,
+                                scale = &quot;medium&quot;,
+                                returnclass = &quot;sf&quot;) %&gt;%
       sf::st_make_valid() %&gt;% sf::st_transform(crs = 4326)
-  }, error = function(e) NULL)
+  }, error = function(e)
+    NULL)
   
   inside_paraguay &lt;- tibble::tibble()
-  if (!is.null(paraguay_sf) &amp;&amp; all(c(&quot;LATn&quot;,&quot;LONGn&quot;) %in% names(df))) {
+  if (!is.null(paraguay_sf) &amp;&amp;
+      all(c(&quot;LATn&quot;, &quot;LONGn&quot;) %in% names(df))) {
     pts &lt;- df %&gt;% filter(!is.na(LATn) &amp; !is.na(LONGn)) %&gt;%
-      st_as_sf(coords = c(&quot;LONGn&quot;,&quot;LATn&quot;), crs = 4326, remove = FALSE)
+      st_as_sf(
+        coords = c(&quot;LONGn&quot;, &quot;LATn&quot;),
+        crs = 4326,
+        remove = FALSE
+      )
     inside &lt;- sf::st_within(pts, paraguay_sf)
     pts$inside_paraguay &lt;- lengths(inside) &gt; 0
-    inside_paraguay &lt;- pts %&gt;% st_drop_geometry() %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, DATE, SPECIES_CLEAN, LATn, LONGn, inside_paraguay)
-    add_log(&quot;qa_spatial_within&quot;, paste0(&quot;Spatial containment checked; points with coords: &quot;, nrow(pts)), nrow(pts), c(&quot;LATn&quot;,&quot;LONGn&quot;))
+    inside_paraguay &lt;- pts %&gt;% st_drop_geometry() %&gt;% select(DEPARTMENT,
+                                                             DISTRICT,
+                                                             LOCALITY,
+                                                             DATE,
+                                                             SPECIES_CLEAN,
+                                                             LATn,
+                                                             LONGn,
+                                                             inside_paraguay)
+    add_log(
+      &quot;qa_spatial_within&quot;,
+      paste0(
+        &quot;Spatial containment checked; points with coords: &quot;,
+        nrow(pts)
+      ),
+      nrow(pts),
+      c(&quot;LATn&quot;, &quot;LONGn&quot;)
+    )
   }
   
   # Duplicates exact and spatial approximate
-  key_cols &lt;- c(&quot;DEPARTMENT&quot;,&quot;DISTRICT&quot;,&quot;LOCALITY&quot;,&quot;DATE&quot;,&quot;SPECIES_CLEAN&quot;)
+  key_cols &lt;- c(&quot;DEPARTMENT&quot;,
+                &quot;DISTRICT&quot;,
+                &quot;LOCALITY&quot;,
+                &quot;DATE&quot;,
+                &quot;SPECIES_CLEAN&quot;)
   exact_dups &lt;- if (all(key_cols %in% names(df))) {
     df %&gt;% group_by(across(all_of(key_cols))) %&gt;% tally() %&gt;% filter(n &gt; 1) %&gt;% arrange(desc(n))
-  } else tibble::tibble()
+  } else
+    tibble::tibble()
   
   # Taxonomic coverage and confidence
   has_gbif &lt;- &quot;SPECIES_MATCHED&quot; %in% cols
-  species_no_gbif &lt;- if (has_gbif) df %&gt;% filter(is.na(SPECIES_MATCHED) | SPECIES_MATCHED == &quot;&quot;) %&gt;% distinct(SPECIES_CLEAN) else tibble::tibble()
-  low_conf &lt;- if (&quot;CONFIDENCE&quot; %in% cols) df %&gt;% filter(!is.na(CONFIDENCE) &amp; CONFIDENCE &lt; gbif_conf_threshold) %&gt;% distinct(SPECIES_CLEAN, CONFIDENCE) else tibble::tibble()
+  species_no_gbif &lt;- if (has_gbif)
+    df %&gt;% filter(is.na(SPECIES_MATCHED) |
+                    SPECIES_MATCHED == &quot;&quot;) %&gt;% distinct(SPECIES_CLEAN)
+  else
+    tibble::tibble()
+  low_conf &lt;- if (&quot;CONFIDENCE&quot; %in% cols)
+    df %&gt;% filter(!is.na(CONFIDENCE) &amp;
+                    CONFIDENCE &lt; gbif_conf_threshold) %&gt;% distinct(SPECIES_CLEAN, CONFIDENCE)
+  else
+    tibble::tibble()
   
-  add_log(&quot;qa_taxonomy&quot;, paste0(&quot;Taxonomy checks: no_gbif=&quot;, nrow(species_no_gbif), &quot;; low_conf=&quot;, nrow(low_conf)),
-          nrow(df), c(&quot;SPECIES_CLEAN&quot;,&quot;SPECIES_MATCHED&quot;,&quot;CONFIDENCE&quot;))
+  add_log(
+    &quot;qa_taxonomy&quot;,
+    paste0(
+      &quot;Taxonomy checks: no_gbif=&quot;,
+      nrow(species_no_gbif),
+      &quot;; low_conf=&quot;,
+      nrow(low_conf)
+    ),
+    nrow(df),
+    c(&quot;SPECIES_CLEAN&quot;, &quot;SPECIES_MATCHED&quot;, &quot;CONFIDENCE&quot;)
+  )
   
   # Binomial completeness
   df &lt;- df %&gt;% mutate(
     GENUS = stringr::word(SPECIES_CLEAN, 1),
     EPITHET = stringr::word(SPECIES_CLEAN, 2)
   )
-  incomplete_binomial &lt;- df %&gt;% filter(is.na(EPITHET) | EPITHET == &quot;&quot;) %&gt;% distinct(SPECIES_CLEAN)
+  incomplete_binomial &lt;- df %&gt;% filter(is.na(EPITHET) |
+                                         EPITHET == &quot;&quot;) %&gt;% distinct(SPECIES_CLEAN)
   
   # Compare with AI map if provided
   compare_ai &lt;- tibble::tibble()
@@ -1798,9 +2153,18 @@ qa_report &lt;- function(
     tax_ai &lt;- tax_ai %&gt;% rename_with(~ toupper(.x))
     if (&quot;SPECIES_CLEAN&quot; %in% names(tax_ai)) {
       compare_ai &lt;- df %&gt;% distinct(SPECIES_CLEAN) %&gt;%
-        left_join(tax_ai %&gt;% distinct(SPECIES_CLEAN) %&gt;% mutate(IN_AI = TRUE), by = &quot;SPECIES_CLEAN&quot;) %&gt;%
+        left_join(tax_ai %&gt;% distinct(SPECIES_CLEAN) %&gt;% mutate(IN_AI = TRUE),
+                  by = &quot;SPECIES_CLEAN&quot;) %&gt;%
         mutate(IN_AI = ifelse(is.na(IN_AI), FALSE, TRUE))
-      add_log(&quot;qa_compare_ai&quot;, paste0(&quot;Compared species list with AI map; AI matches: &quot;, sum(compare_ai$IN_AI)), nrow(compare_ai), c(&quot;SPECIES_CLEAN&quot;))
+      add_log(
+        &quot;qa_compare_ai&quot;,
+        paste0(
+          &quot;Compared species list with AI map; AI matches: &quot;,
+          sum(compare_ai$IN_AI)
+        ),
+        nrow(compare_ai),
+        c(&quot;SPECIES_CLEAN&quot;)
+      )
     }
   }
   
@@ -1812,21 +2176,54 @@ qa_report &lt;- function(
   out_xlsx &lt;- file.path(out_dir, paste0(name_prefix, &quot;_report_&quot;, ts, &quot;.xlsx&quot;))
   wb &lt;- openxlsx::createWorkbook()
   openxlsx::addWorksheet(wb, &quot;overview&quot;)
-  openxlsx::writeData(wb, &quot;overview&quot;, tibble::tibble(total_rows = n_total, unique_species = n_unique_species))
-  openxlsx::addWorksheet(wb, &quot;bad_dates&quot;); openxlsx::writeData(wb, &quot;bad_dates&quot;, bad_dates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, DATE, YEAR2, SPECIES_CLEAN))
-  openxlsx::addWorksheet(wb, &quot;bad_coords&quot;); openxlsx::writeData(wb, &quot;bad_coords&quot;, bad_coords %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN))
-  openxlsx::addWorksheet(wb, &quot;swap_candidates&quot;); openxlsx::writeData(wb, &quot;swap_candidates&quot;, swap_candidates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN))
-  openxlsx::addWorksheet(wb, &quot;exact_dups&quot;); openxlsx::writeData(wb, &quot;exact_dups&quot;, exact_dups)
-  openxlsx::addWorksheet(wb, &quot;no_gbif&quot;); openxlsx::writeData(wb, &quot;no_gbif&quot;, species_no_gbif)
-  openxlsx::addWorksheet(wb, &quot;low_conf&quot;); openxlsx::writeData(wb, &quot;low_conf&quot;, low_conf)
-  openxlsx::addWorksheet(wb, &quot;incomplete_binomial&quot;); openxlsx::writeData(wb, &quot;incomplete_binomial&quot;, incomplete_binomial)
-  openxlsx::addWorksheet(wb, &quot;by_disease&quot;); openxlsx::writeData(wb, &quot;by_disease&quot;, summary_by_disease)
-  if (nrow(compare_ai) &gt; 0) { openxlsx::addWorksheet(wb, &quot;compare_ai&quot;); openxlsx::writeData(wb, &quot;compare_ai&quot;, compare_ai) }
+  openxlsx::writeData(
+    wb,
+    &quot;overview&quot;,
+    tibble::tibble(total_rows = n_total, unique_species = n_unique_species)
+  )
+  openxlsx::addWorksheet(wb, &quot;bad_dates&quot;)
+  openxlsx::writeData(
+    wb,
+    &quot;bad_dates&quot;,
+    bad_dates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, DATE, YEAR2, SPECIES_CLEAN)
+  )
+  openxlsx::addWorksheet(wb, &quot;bad_coords&quot;)
+  openxlsx::writeData(
+    wb,
+    &quot;bad_coords&quot;,
+    bad_coords %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN)
+  )
+  openxlsx::addWorksheet(wb, &quot;swap_candidates&quot;)
+  openxlsx::writeData(
+    wb,
+    &quot;swap_candidates&quot;,
+    swap_candidates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN)
+  )
+  openxlsx::addWorksheet(wb, &quot;exact_dups&quot;)
+  openxlsx::writeData(wb, &quot;exact_dups&quot;, exact_dups)
+  openxlsx::addWorksheet(wb, &quot;no_gbif&quot;)
+  openxlsx::writeData(wb, &quot;no_gbif&quot;, species_no_gbif)
+  openxlsx::addWorksheet(wb, &quot;low_conf&quot;)
+  openxlsx::writeData(wb, &quot;low_conf&quot;, low_conf)
+  openxlsx::addWorksheet(wb, &quot;incomplete_binomial&quot;)
+  openxlsx::writeData(wb, &quot;incomplete_binomial&quot;, incomplete_binomial)
+  openxlsx::addWorksheet(wb, &quot;by_disease&quot;)
+  openxlsx::writeData(wb, &quot;by_disease&quot;, summary_by_disease)
+  if (nrow(compare_ai) &gt; 0) {
+    openxlsx::addWorksheet(wb, &quot;compare_ai&quot;)
+    openxlsx::writeData(wb, &quot;compare_ai&quot;, compare_ai)
+  }
   openxlsx::saveWorkbook(wb, out_xlsx, overwrite = TRUE)
   
   # CSV quick flags
-  write_csv(bad_dates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, DATE, SPECIES_CLEAN), file.path(out_dir, paste0(name_prefix, &quot;_bad_dates_&quot;, ts, &quot;.csv&quot;)))
-  write_csv(bad_coords %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN), file.path(out_dir, paste0(name_prefix, &quot;_bad_coords_&quot;, ts, &quot;.csv&quot;)))
+  write_csv(
+    bad_dates %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, DATE, SPECIES_CLEAN),
+    file.path(out_dir, paste0(name_prefix, &quot;_bad_dates_&quot;, ts, &quot;.csv&quot;))
+  )
+  write_csv(
+    bad_coords %&gt;% select(DEPARTMENT, DISTRICT, LOCALITY, LATn, LONGn, SPECIES_CLEAN),
+    file.path(out_dir, paste0(name_prefix, &quot;_bad_coords_&quot;, ts, &quot;.csv&quot;))
+  )
   write_csv(species_no_gbif, file.path(out_dir, paste0(name_prefix, &quot;_no_gbif_&quot;, ts, &quot;.csv&quot;)))
   write_csv(low_conf, file.path(out_dir, paste0(name_prefix, &quot;_low_conf_&quot;, ts, &quot;.csv&quot;)))
   
@@ -1838,27 +2235,41 @@ qa_report &lt;- function(
     operator = Sys.getenv(&quot;USER&quot;, unset = &quot;unknown&quot;)
   )
   write_csv(qa_meta, file.path(out_dir, paste0(name_prefix, &quot;_metadata_&quot;, ts, &quot;.csv&quot;)))
-  write_lines(capture.output(sessionInfo()), file.path(out_dir, paste0(name_prefix, &quot;_sessioninfo_&quot;, ts, &quot;.txt&quot;)))
+  write_lines(capture.output(sessionInfo()), file.path(out_dir, paste0(
+    name_prefix, &quot;_sessioninfo_&quot;, ts, &quot;.txt&quot;
+  )))
   
   # Final logs
-  add_log(&quot;qa_report_generate&quot;, paste0(&quot;QA report generated and exported to: &quot;, out_xlsx), n_total, c(&quot;SPECIES_CLEAN&quot;,&quot;DATE&quot;,&quot;LAT&quot;,&quot;LONG&quot;))
-  add_log(&quot;qa_finish&quot;, &quot;QA report completed&quot;, n_total, c(&quot;overview&quot;,&quot;bad_dates&quot;,&quot;bad_coords&quot;))
+  add_log(
+    &quot;qa_report_generate&quot;,
+    paste0(&quot;QA report generated and exported to: &quot;, out_xlsx),
+    n_total,
+    c(&quot;SPECIES_CLEAN&quot;, &quot;DATE&quot;, &quot;LAT&quot;, &quot;LONG&quot;)
+  )
+  add_log(
+    &quot;qa_finish&quot;,
+    &quot;QA report completed&quot;,
+    n_total,
+    c(&quot;overview&quot;, &quot;bad_dates&quot;, &quot;bad_coords&quot;)
+  )
   
   # Return programmatic object
-  invisible(list(
-    overview = tibble::tibble(total_rows = n_total, unique_species = n_unique_species),
-    bad_dates = bad_dates,
-    bad_coords = bad_coords,
-    swap_candidates = swap_candidates,
-    exact_dups = exact_dups,
-    species_no_gbif = species_no_gbif,
-    low_conf = low_conf,
-    incomplete_binomial = incomplete_binomial,
-    summary_by_disease = summary_by_disease,
-    compare_ai = compare_ai,
-    out_xlsx = out_xlsx,
-    meta = qa_meta
-  ))
+  invisible(
+    list(
+      overview = tibble::tibble(total_rows = n_total, unique_species = n_unique_species),
+      bad_dates = bad_dates,
+      bad_coords = bad_coords,
+      swap_candidates = swap_candidates,
+      exact_dups = exact_dups,
+      species_no_gbif = species_no_gbif,
+      low_conf = low_conf,
+      incomplete_binomial = incomplete_binomial,
+      summary_by_disease = summary_by_disease,
+      compare_ai = compare_ai,
+      out_xlsx = out_xlsx,
+      meta = qa_meta
+    )
+  )
 }
 
 
@@ -1871,14 +2282,29 @@ res_qa &lt;- qa_report(
   year_range = c(1950, 2026),
   gbif_conf_threshold = 80,
   add_log = add_log
-)
-
-add_log(
+)</code></pre>
+<pre><code>## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv
+## Se anexaron 1 filas al log: process_log.csv</code></pre>
+<pre class="r"><code>add_log(
   step = &quot;qa_integration&quot;,
   description = paste0(&quot;QA report executed; outputs: &quot;, res_qa$out_xlsx),
   rows_affected = nrow(dataset_final),
-  variables = c(&quot;SPECIES_CLEAN&quot;,&quot;SPECIES_MATCHED&quot;,&quot;CONFIDENCE&quot;,&quot;LAT&quot;,&quot;LONG&quot;,&quot;DATE&quot;)
+  variables = c(
+    &quot;SPECIES_CLEAN&quot;,
+    &quot;SPECIES_MATCHED&quot;,
+    &quot;CONFIDENCE&quot;,
+    &quot;LAT&quot;,
+    &quot;LONG&quot;,
+    &quot;DATE&quot;
+  )
 )</code></pre>
+<pre><code>## Se anexaron 1 filas al log: process_log.csv</code></pre>
 
 
 
