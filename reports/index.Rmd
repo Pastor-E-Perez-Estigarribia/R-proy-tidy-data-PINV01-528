@@ -1,0 +1,815 @@
+---
+title: "Executive Report: Medically Important Vectors in Paraguay (1998-2023)"
+author: "PINV01-528"
+date: "`r Sys.Date()`"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    toc: yes
+    df_print: paged
+params:
+  data_file: "SENEPA_tidy_data_set.csv"
+---
+
+
+```{r setup, include=FALSE}
+# Configuración global para ocultar código y mensajes
+knitr::opts_chunk$set(
+  echo = FALSE, 
+  warning = FALSE, 
+  message = FALSE,
+  cache = FALSE
+)
+```
+
+```{r}
+# --- Responsive CSS (guárdalo y enlázalo en el HTML) ---
+css <- "
+/* Meta viewport (mobile friendly) */
+@viewport { width: device-width; zoom: 1; }
+
+/* Contenedor principal */
+.report-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* Ajustes generales */
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fbfbf9; color: #222; }
+
+/* Plots responsivos: Plotly y Leaflet */
+.plotly, .leaflet-container {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 320px;
+}
+
+/* Alturas por dispositivo */
+@media (min-width: 1200px) {
+  .plotly, .leaflet-container { height: 560px !important; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .plotly, .leaflet-container { height: 440px !important; }
+}
+@media (max-width: 767px) {
+  .plotly, .leaflet-container { height: 360px !important; }
+}
+
+/* Tabset / layout spacing */
+.tabset > .tab-content { padding-top: 8px; }
+
+/* Buttons and controls scale */
+.btn { font-size: 0.95rem; padding: 6px 10px; }
+
+/* Ensure tables scroll on small screens */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Small visual polish */
+h1, h2, h3 { color: #2b3a2b; }
+"
+
+# write CSS file to project (will be included in HTML)
+css_file <- "report_responsive.css"
+writeLines(css, css_file)
+
+# --- JS to force widgets to resize on window change and when tabs become visible ---
+js <- "
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Resize Plotly graphs on window resize
+  function resizePlotly() {
+    document.querySelectorAll('.plotly').forEach(function(gd) {
+      try { Plotly.Plots.resize(gd); } catch(e) { /* ignore */ }
+    });
+  }
+
+  // Resize Leaflet maps (invalidateSize) on window resize
+  function resizeLeaflet() {
+    if(window.L && window.L.map) {
+      // find leaflet containers and call invalidateSize on their maps if accessible
+      document.querySelectorAll('.leaflet-container').forEach(function(el) {
+        // If map object stored on element (shiny/leaflet may store), try to call invalidateSize
+        if(el._leaflet_map && typeof el._leaflet_map.invalidateSize === 'function') {
+          el._leaflet_map.invalidateSize();
+        }
+      });
+    }
+  }
+
+  // Debounced resize handler
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      resizePlotly();
+      resizeLeaflet();
+    }, 150);
+  });
+
+  // When Bootstrap tab shown (Rmd tabset), trigger resize for visible plots
+  document.querySelectorAll('a[data-toggle=\"tab\"]').forEach(function(tab) {
+    tab.addEventListener('shown.bs.tab', function(e) {
+      setTimeout(function(){ resizePlotly(); resizeLeaflet(); }, 120);
+    });
+  });
+
+  // Also trigger once after load
+  setTimeout(function(){ resizePlotly(); resizeLeaflet(); }, 300);
+});
+</script>
+"
+# write JS file and include it
+js_file <- "report_responsive.js"
+writeLines(js, js_file)
+
+# Print HTML tags to include CSS and JS in the knitted HTML (will be rendered into the document)
+#cat(sprintf("<link rel='stylesheet' href='%s'/>", css_file))
+#cat(sprintf("<script src='%s'></script>", js_file))
+```
+
+# Executive Summary
+
+This report analyzes a nationwide georeferenced dataset compiled by the National Malaria Eradication Service (SENEPA). It contains 20,619 records of disease vectors (Phlebotominae, Triatominae, and Culicidae) collected between 1998 and 2023.
+
+The objective is to provide a reproducible and interactive tool for public health decision-making, allowing the exploration of spatial and temporal records of vectors associated with Dengue, Chagas, Malaria, Leishmaniasis, and Yellow Fever in Paraguay.
+
+```{r}
+rm(list = ls())
+setwd("C:/R/R proy tidy data PINV01-528")
+# Carga silenciosa de librerías y datos
+if (!require('pacman')) install.packages('pacman', repos = "[http://cran.us.r-project.org](http://cran.us.r-project.org)")
+
+pacman::p_load(
+  tidyverse, rio, plotly, leaflet, lubridate, gt, janitor, 
+  sf, ggridges, cowplot, showtext, forcats
+)
+
+# Carga del dataset (Asegúrate de que la ruta sea correcta en tu proyecto de RStudio)
+df <- rio::import('data/processed_data/SENEPA_tidy_data_set.csv',
+                 encoding = "UTF-8")
+
+```
+
+## 1. Taxonomic Composition
+
+The following chart displays the diversity of species documented for each disease. It highlights the dominant species and the relative surveillance records per vector group. 
+
+How to explore:
+
+- Select a disease from the dropdown menu to filter species.
+- Hover over points for exact frequency counts and family classification.
+
+
+```{r}
+spp_df <- as.data.frame(table(df$SPECIES_AI_Correct, df$DISEASE)) %>%
+  rename(spp = Var1, Disease = Var2, Freq = Freq) %>%
+  mutate(spp = str_trim(as.character(spp)), spp = na_if(spp, "")) %>%
+  drop_na(spp) %>%
+  filter(Freq > 0) %>%
+  left_join(df %>% select(SPECIES_AI_Correct, FAMILY) %>% distinct(), by = c("spp" = "SPECIES_AI_Correct"))
+
+spp_df_ordered <- spp_df %>%
+  group_by(Disease) %>%
+  mutate(spp = fct_reorder(spp, Freq, .desc = TRUE)) %>%
+  ungroup()
+
+families <- unique(spp_df_ordered$FAMILY)
+pal <- RColorBrewer::brewer.pal(min(length(families), 8), "Dark2")
+family_colors <- setNames(pal, families)
+
+diseases <- unique(spp_df_ordered$Disease)
+fig_OO <- plot_ly()
+
+for (i in seq_along(diseases)) {
+  df_sub <- spp_df_ordered %>% filter(Disease == diseases[i])
+  fig_OO <- fig_OO %>% add_trace(
+    x = df_sub$spp, y = df_sub$Freq, type = "scatter", mode = "markers",
+    marker = list(size = 10, color = family_colors[df_sub$FAMILY]),
+    text = paste0("<b>Species:</b> ", df_sub$spp, "<br><b>Freq:</b> ", df_sub$Freq, "<br><b>Family:</b> ", df_sub$FAMILY),
+    hoverinfo = "text", visible = ifelse(i == 1, TRUE, FALSE), name = diseases[i]
+  )
+}
+
+buttons <- lapply(seq_along(diseases), function(i) {
+  list(method = "update", args = list(list(visible = seq_along(diseases) == i)), label = diseases[i])
+})
+
+fig_OO %>% layout(
+  updatemenus = list(list(type = "dropdown", x = 1.05, y = 1, buttons = buttons)),
+  xaxis = list(title = "Species"), yaxis = list(title = "Record Count"),
+  title = "Vector Species Frequency per Disease"
+)
+```
+----------------------------------------------------------
+
+## 2. Temporal Trends (1998-2023)
+This section shows the accumulation of records over 25 years. Note that sampling effort is heterogeneous, often increasing during outbreak years or specific campaigns.
+
+How to explore:
+
+- Use the Range Slider at the bottom to focus on specific years.
+
+
+- The solid line shows annual records; the dashed line shows cumulative growth.
+
+```{r}
+d_order <- c("MALARIA", "LEISHMANIOSIS", "FIEBRE AMARILLA URBANA", "FIEBRE AMARILLA", "DENGUE", "CHAGAS")
+
+df_year <- df %>%
+  mutate(YEAR = as.numeric(str_extract(as.character(YEAR), "\\d{4}"))) %>%
+  filter(DISEASE %in% d_order) %>%
+  count(DISEASE, YEAR) %>%
+  group_by(DISEASE) %>%
+  arrange(YEAR) %>%
+  mutate(cum = cumsum(n)) %>%
+  ungroup()
+
+fig_T <- plot_ly()
+for(i in seq_along(d_order)) {
+  df_sub <- df_year %>% filter(DISEASE == d_order[i])
+  fig_T <- fig_T %>% add_trace(
+    data = df_sub, x = ~YEAR, y = ~n, type = "scatter", mode = "lines+markers",
+    name = paste0(d_order[i], " - Annual"), visible = ifelse(i == 1, TRUE, FALSE),
+    yaxis = "y1", line = list(color = "#1f77b4")
+  )
+  fig_T <- fig_T %>% add_trace(
+    data = df_sub, x = ~YEAR, y = ~cum, type = "scatter", mode = "lines+markers",
+    name = paste0(d_order[i], " - Cumulative"), visible = ifelse(i == 1, TRUE, FALSE),
+    yaxis = "y2", line = list(color = "#d62728", dash = "dash")
+  )
+}
+
+buttons_T <- lapply(seq_along(d_order), function(i) {
+  vis <- rep(FALSE, 2 * length(d_order)); vis[(2*i - 1):(2*i)] <- TRUE
+  list(method = "update", args = list(list(visible = vis)), label = d_order[i])
+})
+
+fig_T %>% layout(
+  updatemenus = list(list(type = "dropdown", x = 1.05, y = 1, buttons = buttons_T)),
+  xaxis = list(title = "Year", rangeslider = list(visible = TRUE)),
+  yaxis = list(title = "Annual Records"),
+  yaxis2 = list(title = "Cumulative Records", overlaying = "y", side = "right"),
+  title = "Temporal Surveillance Effort"
+)  %>% layout(
+  updatemenus = list(list(type = "dropdown", x = 1.05, y = 1, buttons = buttons_T)),
+  xaxis = list(title = "Year", rangeslider = list(visible = TRUE)),
+  yaxis = list(title = "Annual Records"),
+  yaxis2 = list(title = "Cumulative Records", overlaying = "y", side = "right"),
+  title = list(text = "Temporal Surveillance Effort", y = 0.98), # Bajamos ligeramente el título si es necesario
+  # Configuración para mover la leyenda arriba
+  legend = list(
+    orientation = "h",   # Mantiene la leyenda horizontal
+    xanchor = "center",  # Centra la leyenda en el eje X
+    x = 0.5,             # Posición central (50%)
+    yanchor = "bottom",  # Ancla la leyenda desde su base
+    y = 1.1              # Posiciona la leyenda por encima del gráfico (1 = borde superior)
+  ),
+  margin = list(t = 80)  # Agregamos margen superior para darle espacio a la leyenda y al título
+)
+
+```
+----------------------------------------------------------
+
+## 3. Geographic Distribution
+
+This interactive spatial map shows where vectors have been detected across Paraguay's 17 departments. Each occurrence is color-coded by its associated disease to facilitate regional comparisons.
+
+**How to explore:**
+
+* **Toggle Layers:** Use the **control panel** (top right corner) to check or uncheck specific diseases, allowing you to isolate or overlay different vector groups.
+* **Inspect Records:** **Click on any colored point** to open a pop-up displaying the specific disease, scientific species name, and collection year.
+* **Zoom & Pan:** Use the **zoom tools** (+ / -) or scroll with your mouse to inspect specific localities or urban centers in greater detail.
+* **Color Guide:** Reference the **legend** (bottom right) for a quick overview of the disease categories.
+
+### 3.1. General Distribution
+
+```{r}
+# 1. Definir una paleta de colores basada en las enfermedades disponibles
+paleta_enfermedades <- colorFactor(palette = "Dark2", domain = df$DISEASE)
+
+df %>% 
+  filter(!is.na(LONG) & !is.na(LAT) & !is.na(DISEASE)) %>%
+  leaflet() %>% 
+  addTiles() %>%
+  setView(lng = -58, lat = -24, zoom = 5) %>%
+  addCircleMarkers(
+    ~LONG, ~LAT, 
+    radius = 2, 
+    color = ~paleta_enfermedades(DISEASE), # Asigna el color según la enfermedad
+    stroke = FALSE,                        # Sin borde para resaltar el color de relleno
+    fillOpacity = 0.7,
+    group = ~DISEASE,                      # Agrupa los datos para el control de capas
+    popup = ~paste("<b>", DISEASE, "</b><br>", SPECIES_AI_Correct, "<br>", YEAR)
+  ) %>%
+  # 2. Agregar los checkboxes para seleccionar/deseleccionar
+  addLayersControl(
+    overlayGroups = unique(df$DISEASE[!is.na(df$DISEASE)]),
+    options = layersControlOptions(collapsed = FALSE) # FALSE muestra el menú siempre abierto
+  ) %>%
+  # Alternativa recomendada: Agregar una leyenda visual
+  addLegend(
+    position = "bottomright",
+    pal = paleta_enfermedades,
+    values = ~DISEASE,
+    title = "Disease",
+    opacity = 1
+  )
+
+```
+----------------------------------------------------------
+
+###  3.2. Geographic Hotspots and Density
+
+This interactive spatial map highlights the areas with the highest concentration of vector records across Paraguay's 17 departments. The density map utilizes a heatmap (Viridis scale) to pinpoint historical surveillance hotspots and potential ecological niches for each specific vector group. 
+
+To enhance spatial context and readability, the visualization features customizable base map layers, allowing for better visual contrast depending on the distribution density of the selected disease.
+
+#### Vector records hotspots
+
+```{r}
+fig <- df %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6
+  )  %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4.6,
+      center = list(lon = -58 , lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  )
+
+fig
+
+```
+
+
+**How to explore:**
+
+* **Select Disease (Left Dropdown):** Use the menu in the top-left corner of the map to toggle between different diseases (e.g., Dengue, Chagas, Malaria). The heatmap will automatically update to reflect the spatial footprint of the selected vectors.
+* **Change Base Map (Right Dropdown):** Use the menu in the top-right corner to switch the background map style. You can choose between a standard detailed view (*Open Street Map*), a light minimalist canvas (*Carto Positron*), or a dark mode map (*Carto Dark*) which provides excellent contrast for the bright heatmap colors.
+* **Zoom & Pan:** Scroll with your mouse or use the **+ / -** buttons on the map to zoom into specific localities, urban centers, or rural districts. Click and drag to navigate across different regions of the country.
+* **Hover for Details:** Move your cursor over the colored areas to see the precise latitude and longitude coordinates.
+
+
+#### Vector records hotspots by desease
+
+```{r}
+# 1. Identificar las enfermedades únicas disponibles
+enfermedades_mapa <- unique(df$DISEASE[!is.na(df$DISEASE)])
+
+# 2. Inicializar el objeto plotly
+fig_densidad <- plot_ly()
+
+# 3. Añadir capa de densidad por cada enfermedad
+for (i in seq_along(enfermedades_mapa)) {
+  df_sub <- df %>% filter(DISEASE == enfermedades_mapa[i])
+  
+  fig_densidad <- fig_densidad %>% add_trace(
+    type = 'densitymapbox',
+    lat = df_sub$LAT,
+    lon = df_sub$LONG,
+    coloraxis = 'coloraxis',
+    radius = 8,
+    coloraxis = 'coloraxis',
+    name = enfermedades_mapa[i],
+    visible = ifelse(i == 1, TRUE, FALSE) 
+  )
+}
+
+# 4. Crear los botones para seleccionar la ENFERMEDAD
+botones_enfermedad <- lapply(seq_along(enfermedades_mapa), function(i) {
+  list(
+    method = "update",
+    args = list(list(visible = seq_along(enfermedades_mapa) == i)),
+    label = enfermedades_mapa[i]
+  )
+})
+
+# 5. Crear los botones para seleccionar el ESTILO DEL MAPA BASE
+botones_estilo <- list(
+  list(method = "relayout", args = list(list(mapbox.style = "open-street-map")), label = "Open Street Map"),
+  list(method = "relayout", args = list(list(mapbox.style = "carto-positron")), label = "Carto Positron (Claro)"),
+  list(method = "relayout", args = list(list(mapbox.style = "carto-darkmatter")), label = "Carto Dark (Oscuro)")
+)
+
+# 6. Aplicar el diseño incluyendo AMBOS menús
+fig_densidad %>% layout(
+  mapbox = list(
+    style = "open-street-map", # Estilo por defecto al cargar
+    zoom = 5, 
+    coloraxis = 'coloraxis',
+    center = list(lon = -58, lat = -23.5)
+  ),
+    coloraxis = list(colorscale = "Viridis"),
+  updatemenus = list(
+    # Menú 1: Selección de Enfermedad (Posicionado a la Izquierda)
+    list(
+      type = "dropdown",
+      x = 0.05, 
+      y = 0.95,
+      buttons = botones_enfermedad,
+      bgcolor = "white"
+    ),
+    # Menú 2: Selección de Capa Base (Posicionado a la Derecha)
+    list(
+      type = "dropdown",
+      x = 0.95, 
+      y = 0.95,
+      buttons = botones_estilo,
+      bgcolor = "white"
+    )
+  ),
+  margin = list(t = 0, b = 0, l = 0, r = 0)
+)
+```
+----------------------------------------------------------
+
+#### Dengue Vector records hotspots in two neighborhoods of Asunción
+
+
+```{r}
+df %>% filter(DISEASE == "DENGUE") %>% plot_ly(type = 'densitymapbox', lat = ~LAT, lon = ~LONG, coloraxis = 'coloraxis', radius = 3) %>% layout(mapbox = list(style = "open-street-map",  zoom = 13.2,
+      center = list(lon = -57.65, lat = -25.32)),
+    coloraxis = list(colorscale = "Viridis"))
+```
+----------------------------------------------------------
+
+## 4. Spatio-Temporal Evolution of Disease Vectors
+
+This dynamic animation synthesizes the geographic and temporal dimensions of the dataset, illustrating the historical progression of vector detections across Paraguay from 1998 to 2023. By animating occurrence density over time, this visualization enables the identification the observation of geographic shifts during specific epidemiological events, and the evaluation of long-term surveillance footprints.
+
+**How to explore this visualization:**
+
+
+* **Automate the Timeline:** Click the **Play** (▶) button located beneath the map to initiate the chronological sequence. Observe how vector presence expands or contracts year by year.
+* **Manual Timeline Scrubbing:** Drag the **slider** at the bottom of the map to navigate freely across the 25-year period. This is particularly useful for performing direct comparisons between specific epidemiological periods (e.g., comparing pre- and post-intervention years, or evaluating specific outbreak decades like pre/post-2010).
+* **Inspect Localized Hotspots:** While the animation is running or paused, **hover your cursor** over the high-density areas (colored hotspots). A tooltip will display the specific vector species detected and the corresponding year of the record.
+* **Adjust Geographic Context:** Use the **zoom controls** (+/-) and drag the map to focus on specific departments or districts without interrupting the temporal animation.
+
+### 4.1. Spatiotemporal visualization of the complete dataset
+
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df%>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig <- occs2 %>%
+  filter(!is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig
+
+```
+
+### 4.2. Spatiotemporal visualization of urban yellow fever vector records
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig_FAU <- occs2 %>%
+  filter(DISEASE == "FIEBRE AMARILLA URBANA" & !is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig_FAU
+
+```
+----------------------------------------------------------
+
+
+### 4.3. Spatiotemporal visualization of yellow fever vector records
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig_FA <- occs2 %>%
+  filter(DISEASE == "FIEBRE AMARILLA" & !is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig_FA
+
+```
+----------------------------------------------------------
+
+### 4.4. Spatiotemporal visualization of malaria vector records
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig_M <- occs2 %>%
+  filter(DISEASE == "MALARIA" & !is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig_M
+
+```
+----------------------------------------------------------
+
+### 4.5. Spatiotemporal visualization of Leishmaniosis vector records
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig_L <- occs2 %>%
+  filter(DISEASE == "LEISHMANIOSIS" & !is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig_L
+
+```
+----------------------------------------------------------
+
+### 4.6. Spatiotemporal visualization of Chagas vector records
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         YEAR = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "year"), "%Y")))
+
+fig_ch <- occs2 %>%
+  filter(DISEASE == "CHAGAS" & !is.na(YEAR)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 6,
+    frame = ~ YEAR,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", YEAR)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 4,
+      center = list(lon = -58, lat = -23.5)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "YEAR: "))
+
+fig_ch
+
+```
+----------------------------------------------------------
+
+### 4.7. Spatiotemporal visualization of Dengue vector records
+
+> **Note on Dengue data:** Due to the inability to access national surveillance records for dengue vectors, the data presented here correspond exclusively to the "TOPA DENGUE" project, which is restricted to two neighborhoods in the city of Asunción.
+
+```{r}
+# 1. Preparación de datos: imputación de fechas y filtrado de valores nulos
+occs2 <- df %>%
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  ) %>%
+  mutate(DATE2 = as.Date(DATE_aux),
+         MONTH = ifelse(is.na(DATE2), NA_character_, format(floor_date(DATE2, "month"), "%Y-%m"))) #month
+
+fig_D <- occs2 %>%
+  filter(DISEASE == "DENGUE" & !is.na(MONTH)) %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~ LAT,
+    lon = ~ LONG,
+    coloraxis = 'coloraxis',
+    radius = 4,
+    frame = ~ MONTH,
+    hoverinfo = "text",
+    text = ~ paste(SPECIES_CLEAN, "<br>", MONTH)
+  ) %>%
+  layout(
+    mapbox = list(
+      style = "open-street-map",
+      zoom = 13.2,
+      center = list(lon = -57.65, lat = -25.32)
+    ),
+    coloraxis = list(colorscale = "Viridis")
+  ) %>%
+  animation_opts(frame = 1000,
+                 transition = 0,
+                 redraw = T) %>%
+  animation_slider(currentvalue = list(prefix = "MONTH: "))
+
+fig_D
+
+```
+----------------------------------------------------------
+
+## 5. Searchable Data Repository
+
+The table below provides access to the 20,619 standardized records. Each entry includes taxonomic, administrative, and spatial metadata
+
+> **Observation on Date Imputation:** The `date_aux` field was generated to handle missing date values. When an exact date was unavailable, it was imputed as January 1st of the corresponding reporting year.
+
+How to use:
+
+* Use the **Search bar** for specific species or localities.
+
+
+* Use **Column Filters** to isolate specific years or departments.
+
+
+
+```{r}
+df_tbl <- as_tibble(df) |>
+  mutate(
+    DATE_aux = paste(YEAR, 1, 1, sep = "-"),
+    DATE_aux = if_else(is.na(DATE), as.Date(DATE_aux), as.Date(DATE))
+  )
+
+
+df_tbl |>
+  dplyr::select(
+    SPECIES = SPECIES_AI_Correct,
+    DISEASE,
+    YEAR,
+    LAT,
+    LONG,
+    DATE_aux,
+    -c(SPECIES_RAW, Justification, SPECIES)
+  ) |>
+  gt() |>
+  cols_label_with(fn = ~ janitor::make_clean_names(., case = "title"))   |>
+  tab_style(style = cell_fill(color = "gray95"),
+            locations = cells_body(columns = c(SPECIES, DISEASE))) |>
+  tab_style(locations = cells_body(columns = SPECIES),
+            style = cell_text(weight = "bold")) |>
+  opt_interactive(
+    use_search = TRUE,
+    use_filters = TRUE,
+    use_resizers = TRUE,
+    use_highlight = TRUE,
+    use_compact_mode = TRUE,
+    use_text_wrapping = TRUE,
+    use_page_size_select = TRUE
+  ) |>
+  tab_header(title = "SENEPA Tidy Dataset",
+             subtitle = paste(
+               "From",
+               min(df_tbl$YEAR, na.rm = T),
+               "to",
+               max(df_tbl$YEAR, na.rm = T),
+               sep = " "
+             )) |>
+  opt_align_table_header(align = "left") |>
+  tab_options(heading.padding = px(1))
+```
+
+
+

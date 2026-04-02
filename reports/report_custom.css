@@ -1,0 +1,17 @@
+
+/* Responsive meta */
+@media (max-width: 768px) {
+  .container { padding-left: 10px; padding-right: 10px; }
+  .btn-lang { padding: 6px 8px; font-size: 12px; }
+  .plotly { height: 320px !important; }
+}
+@media (min-width: 769px) {
+  .plotly { height: 520px !important; }
+}
+body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #222; background: #fbfbf9; }
+h1, h2, h3 { color: #2b3a2b; }
+.btn-lang { margin-left: 6px; margin-right: 6px; }
+.header-controls { position: fixed; top: 10px; right: 20px; z-index: 9999; }
+.download-controls { margin-top: 8px; margin-bottom: 8px; }
+.tabset > .tab-content { padding-top: 10px; }
+

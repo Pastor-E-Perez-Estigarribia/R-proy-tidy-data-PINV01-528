@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxoConsensus Pro - Proyecto PINV01-528</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Slate-900 (Header), Indigo-700 (Primary), Emerald-600 (Validated), Amber-500 (Synonyms) -->
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .chart-container { position: relative; width: 100%; height: 260px; }
+        .lang-active { background-color: #4338ca !important; color: white !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out; }
+        .ai-result-box { border-left: 4px solid #6366f1; }
+        .disclaimer-box { background-color: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 0.7rem; padding: 0.5rem; border-radius: 0.5rem; }
+        .btn-audit { transition: all 0.2s ease; }
+        .btn-audit:hover { transform: scale(1.2); color: #059669; }
+    </style>
+</head>
+<body class="antialiased flex flex-col min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white py-4 shadow-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🔬</span>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight" data-i18n="app_title">TaxoConsensus Hub</h1>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Vigilancia PINV01-528 | Auditoría Taxonómica</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700 shadow-inner">
+                    <button onclick="setLanguage('es')" id="btn-es" class="px-3 py-1 text-xs rounded-md transition-all">ES</button>
+                    <button onclick="setLanguage('en')" id="btn-en" class="px-3 py-1 text-xs rounded-md transition-all">EN</button>
+                    <button onclick="setLanguage('pt')" id="btn-pt" class="px-3 py-1 text-xs rounded-md transition-all">PT</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 flex-grow">
+        
+        <!-- Metrics Bar -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" data-i18n="stat_total">Total Registros</p>
+                <h4 class="text-2xl font-bold text-slate-900" id="stat_total_val">22</h4>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" data-i18n="stat_conf">Confianza Media</p>
+                <h4 class="text-2xl font-bold text-teal-600" id="stat_conf_val">96.8%</h4>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" data-i18n="stat_syn">Sinónimos</p>
+                <h4 class="text-2xl font-bold text-amber-600" id="stat_syn_val">2</h4>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-2 justify-center">
+                <button onclick="runGlobalAnalysis()" class="bg-indigo-600 text-white py-1.5 px-2 rounded-xl font-bold text-[9px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-md hover:bg-indigo-700 transition">
+                    ✨ Informe Global IA
+                </button>
+                <div class="flex gap-1">
+                    <button id="btnExportCSV" onclick="exportToCSV()" class="hidden flex-1 bg-slate-100 text-slate-700 py-1.5 px-1 rounded-xl font-bold hover:bg-slate-200 transition flex items-center justify-center gap-1 text-[8px] border border-slate-200">
+                        📥 CSV
+                    </button>
+                    <button id="btnExportMD" onclick="exportToMarkdown()" class="hidden flex-1 bg-slate-100 text-slate-700 py-1.5 px-1 rounded-xl font-bold hover:bg-slate-200 transition flex items-center justify-center gap-1 text-[8px] border border-slate-200">
+                        📝 MD
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Workbench -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-indigo-100 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <span>✨</span> <span data-i18n="ai_lab_title">Asistente de IA</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-6" data-i18n="ai_lab_desc">Resolución taxonómica y vigilancia basada en evidencia científica del proyecto PINV01-528.</p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex gap-2">
+                            <input type="text" id="aiQuery" class="flex-grow px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition" data-i18n-placeholder="ai_placeholder">
+                            <button onclick="runAIConsensus()" id="aiBtn" class="bg-indigo-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex items-center justify-center">
+                                <span id="aiBtnText">✨</span>
+                                <div id="aiLoader" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            </button>
+                        </div>
+                        <div class="disclaimer-box" data-i18n="disclaimer">
+                            Nota: Se utilizan enlaces a GBIF para validación manual, eliminando el riesgo de identificadores alucinados.
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-100">
+                        <h4 class="text-center text-[10px] font-bold text-slate-400 uppercase mb-4" data-i18n="chart_quality">Calidad del Mapeo</h4>
+                        <div class="chart-container">
+                            <canvas id="confidenceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Result Display -->
+            <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-[450px]">
+                <div class="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" data-i18n="ai_result_label">Resultado del Análisis</span>
+                    <div class="flex gap-2">
+                        <button id="btnSpeak" onclick="playCurrentAnalysis()" class="hidden text-indigo-600 hover:text-indigo-800 transition text-sm" title="Escuchar Reporte">✨ 🔊 Narrar</button>
+                        <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+                    </div>
+                </div>
+                <div id="aiResultContainer" class="p-8 flex-grow flex flex-col justify-center items-center text-center space-y-4 overflow-y-auto custom-scrollbar">
+                    <div class="text-slate-200 text-6xl">&#128214;</div>
+                    <p class="text-slate-400 text-sm italic max-w-sm" data-i18n="ai_empty_msg">Seleccione un registro en la tabla o genere el informe global para visualizar los hallazgos entomológicos.</p>
+                </div>
+                <div id="audioContainer" class="hidden p-4 bg-indigo-50 border-t border-indigo-100"></div>
+            </div>
+        </div>
+
+        <!-- Explorer Table -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade">
+            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/30">
+                <div class="flex flex-col">
+                    <h3 class="text-lg font-bold text-slate-800" data-i18n="table_title">Explorador de Datos PINV01-528</h3>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">Base de Datos de Vectores (Paraguay)</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <select id="statusFilter" onchange="filterData()" class="px-4 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <option value="ALL">Todos los Estatus</option>
+                        <option value="ACCEPTED">ACCEPTED</option>
+                        <option value="SYNONYM">SYNONYM</option>
+                    </select>
+                    <input type="text" id="searchInput" onkeyup="filterData()" data-i18n-placeholder="search_placeholder" class="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition w-full sm:w-64" placeholder="Filtrar...">
+                </div>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Enfermedad</th>
+                            <th class="px-6 py-4">Species Clean</th>
+                            <th class="px-6 py-4">GBIF Matched</th>
+                            <th class="px-6 py-4 text-center">Audit</th>
+                            <th class="px-6 py-4 text-center">Confianza</th>
+                            <th class="px-6 py-4 text-center">IA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-500 py-12 px-4 text-center border-t border-slate-800 mt-auto">
+        <p class="text-xs tracking-widest uppercase mb-4">Dataset bajo Proyecto PINV01-528 | R-Tidy + Gemini AI Hub</p>
+    </footer>
+
+    <script>
+        const apiKey = ""; 
+        const PROJECT_ID = "PINV01-528"; 
+
+        const translations = {
+            es: {
+                app_title: "TaxoConsensus Hub",
+                stat_total: "Total Registros",
+                stat_conf: "Confianza Media",
+                stat_syn: "Sinónimos",
+                ai_lab_title: "Asistente de IA",
+                ai_lab_desc: "Resolución técnica, bibliográfica y vigilancia del proyecto PINV01-528.",
+                ai_placeholder: "Ej: Lutzomyia whitmani...",
+                disclaimer: "Nota: Se utilizan enlaces a GBIF para validación manual, eliminando el riesgo de identificadores alucinados.",
+                ai_result_label: "Resultado del Análisis",
+                ai_empty_msg: "Seleccione un registro en la tabla o genere el informe global para visualizar los hallazgos entomológicos.",
+                table_title: "Explorador de Datos PINV01-528",
+                search_placeholder: "Filtrar por nombre o enfermedad...",
+                loading: "Analizando con rigor científico...",
+                error_api: "Error de conexión IA."
+            },
+            en: {
+                app_title: "TaxoConsensus Hub",
+                stat_total: "Total Records",
+                stat_conf: "Avg Confidence",
+                stat_syn: "Synonyms",
+                ai_lab_title: "AI Assistant",
+                ai_lab_desc: "Technical, bibliographic resolution and surveillance for project PINV01-528.",
+                ai_placeholder: "E.g.: Lutzomyia whitmani...",
+                disclaimer: "Note: GBIF links are used for manual validation, removing the risk of hallucinated identifiers.",
+                ai_result_label: "Analysis Result",
+                ai_empty_msg: "Select a record or generate the global report to view entomological findings.",
+                table_title: "PINV01-528 Data Explorer",
+                search_placeholder: "Filter by name or disease...",
+                loading: "Analyzing with scientific rigor...",
+                error_api: "AI connection error."
+            }
+        };
+
+        const taxonomyData = [
+            { disease: "FIEBRE AMARILLA / ZIKA", family: "Culicidae", clean: "AEDES ALBOPICTUS", matched: "Aedes albopictus (Skuse, 1894)", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES ALBITARSIS", matched: "Anopheles albitarsis Lynch Arribálzaga, 1878", conf: 97, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES NOROESTENSIS", matched: "Anopheles noroestensis Galvão & Lane, 1937", conf: 98, status: "SYNONYM" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES STRODEI", matched: "Anopheles strodei Root, 1926", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES EVANSAE", matched: "Anopheles evansae (Brèthes, 1926)", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES ARGYRITARSIS", matched: "Anopheles argyritarsis Robineau-Desvoidy, 1827", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES PARVUS", matched: "Anopheles parvus (Chagas, 1907)", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES DARLINGI", matched: "Anopheles darlingi Root, 1926", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES TRIANNULATUS", matched: "Anopheles triannulatus (Neiva & Pinto, 1922)", conf: 99, status: "ACCEPTED" },
+            { disease: "MALARIA", family: "Culicidae", clean: "ANOPHELES ROOZEBOMII", matched: "Anopheles rozeboomi Causey, Bramwell & Deane, 1944", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "HAEMAGOGUS JANTHINOMYS", matched: "Haemagogus janthinomys Dyar, 1921", conf: 99, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "HAEMAGOGUS LEUCOCELAENUS", matched: "Haemagogus leucocelaenus (Dyar & Shannon, 1924)", conf: 99, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "HAEMAGOGUS SPEGAZZINII", matched: "Haemagogus spegazzinii Brèthes, 1912", conf: 99, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "SABETHES SABETHES ALBIPRIVUS", matched: "Sabethes Robineau-Desvoidy, 1827", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "SABETHES SABETHES BIPARTIPES", matched: "Sabethes Robineau-Desvoidy, 1827", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "HAEMAGOGUS CONOPOSTEGUS LEUCOCELAENUS", matched: "Haemagogus Williston, 1896", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "OCHLEROTATUS FLUVIATILIS", matched: "Ochlerotatus Lynch-Arribalzaga, 1891", conf: 92, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "SABETHES BELISARIOI", matched: "Sabethes belisarioi Neiva, 1908", conf: 99, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "SABETHES SABETHES AMAZONICUS", matched: "Sabethes Robineau-Desvoidy, 1827", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "SABETHES SABETHES PURPUREUS", matched: "Sabethes Robineau-Desvoidy, 1827", conf: 94, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "PSOROPHORA ALBIGENU", matched: "Psorophora albigenu Peryassú, 1908", conf: 99, status: "ACCEPTED" },
+            { disease: "FIEBRE AMARILLA", family: "Culicidae", clean: "OCHLEROTATUS HASTATUS", matched: "Ochlerotatus hastatus (Dyar, 1922)", conf: 98, status: "SYNONYM" }
+        ];
+
+        let currentLang = 'es';
+        let confChart;
+        let activeSpecies = "";
+        let activeAnalysisRaw = "";
+
+        // --- CORE AI FUNCTIONS ---
+        async function callGeminiText(prompt, system) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: system }] } };
+            const response = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error.";
+        }
+
+        async function callGeminiTTS(text) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: `Dí con voz profesional científica: ${text.substring(0, 1000)}` }] }],
+                generationConfig: { 
+                    responseModalities: ["AUDIO"],
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                }
+            };
+            const result = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+            const data = await result.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        }
+
+        // --- FEATURES ---
+        async function runAIConsensus(targetName = null) {
+            const name = targetName || document.getElementById('aiQuery').value;
+            if (!name) return;
+            activeSpecies = name;
+            const container = document.getElementById('aiResultContainer');
+            const loader = document.getElementById('aiLoader');
+            const btnText = document.getElementById('aiBtnText');
+
+            loader.classList.remove('hidden');
+            btnText.classList.add('hidden');
+            container.innerHTML = `<div class="flex flex-col items-center gap-4"><div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div><p class="text-indigo-600 font-bold animate-pulse">Analizando Taxonomía...</p></div>`;
+
+            const system = `Eres un experto entomólogo del proyecto ${PROJECT_ID}. Resuelve estatus de especie proporcionando estas secciones: 
+            1. Correct Name, 2. Justification (cita Autor, Año), 3. Medical Importance, 4. Bibliographic References. 
+            IMPORTANTE: NO INVENTES taxonIDs ni códigos DOI inexistentes. Idioma: ${currentLang}. Formato HTML (h4, p).`;
+
+            try {
+                const res = await callGeminiText(`Resuelve para el taxón: ${name}`, system);
+                activeAnalysisRaw = res;
+                container.innerHTML = `<div class="text-left w-full space-y-4 animate-fade ai-result-box pl-6">${res}</div>`;
+                container.classList.remove('justify-center', 'items-center', 'text-center');
+                document.getElementById('btnSpeak').classList.remove('hidden');
+                document.getElementById('btnExportMD').classList.remove('hidden');
+                document.getElementById('btnExportCSV').classList.remove('hidden');
+            } catch (e) {
+                container.innerHTML = `<p class="text-rose-500 font-bold">Error de API.</p>`;
+            } finally {
+                loader.classList.add('hidden');
+                btnText.classList.remove('hidden');
+            }
+        }
+
+        async function runGlobalAnalysis() {
+            const container = document.getElementById('aiResultContainer');
+            container.innerHTML = `<div class="flex flex-col items-center gap-4 py-8"><div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div><p class="text-indigo-600 font-bold">Consolidando Informe Epidemiologico...</p></div>`;
+            const list = taxonomyData.map(d => `${d.clean} (${d.disease})`).join(", ");
+            const sys = `Eres un epidemiólogo experto. Proyecto: ${PROJECT_ID}. Analiza la biodiversidad de vectores en Paraguay según esta lista y genera un "Informe de Riesgo Global" profesional. Idioma: ${currentLang}. Formato HTML.`;
+            try {
+                const res = await callGeminiText(`Dataset: ${list}`, sys);
+                activeAnalysisRaw = res;
+                activeSpecies = "Informe_Epidemiologico_Global";
+                container.innerHTML = `<div class="text-left w-full space-y-4 animate-fade ai-result-box pl-6">${res}</div>`;
+                container.classList.remove('justify-center', 'items-center', 'text-center');
+                document.getElementById('btnSpeak').classList.remove('hidden');
+                document.getElementById('btnExportMD').classList.remove('hidden');
+            } catch (e) { container.innerHTML = `<p class="text-rose-500 font-bold">Error.</p>`; }
+        }
+
+        async function playCurrentAnalysis() {
+            const player = document.getElementById('audioContainer');
+            const cleanText = activeAnalysisRaw.replace(/<[^>]*>?/gm, '').substring(0, 1000);
+            try {
+                const audioBase = await callGeminiTTS(cleanText);
+                const blob = new Blob([Uint8Array.from(atob(audioBase), c => c.charCodeAt(0))], { type: 'audio/wav' });
+                player.innerHTML = `<audio controls autoplay src="${URL.createObjectURL(blob)}" class="w-full h-8"></audio>`;
+                player.classList.remove('hidden');
+            } catch (e) { console.error(e); }
+        }
+
+        // --- EXPORT & UI ---
+        function exportToMarkdown() {
+            const md = `# Reporte ${PROJECT_ID}: ${activeSpecies}\n\n${activeAnalysisRaw.replace(/<h4>(.*?)<\/h4>/gi, "## $1\n").replace(/<p>(.*?)<\/p>/gi, "$1\n\n").replace(/<[^>]*>?/gm, '')}\n\n--- \n*Pipeline de curación ${PROJECT_ID}.*`;
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
+            link.download = `${activeSpecies.toLowerCase()}.md`;
+            link.click();
+        }
+
+        function exportToCSV() {
+            const csv = `Proyecto,Especie,Analisis\n${PROJECT_ID},${activeSpecies},"${activeAnalysisRaw.replace(/<[^>]*>?/gm, '').substring(0, 500).replace(/"/g, '""')}"`;
+            const link = document.createElement("a");
+            link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+            link.download = `export_${activeSpecies.toLowerCase()}.csv`;
+            link.click();
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = translations[lang][el.getAttribute('data-i18n')] || el.innerText);
+            ['es', 'en', 'pt'].forEach(l => document.getElementById(`btn-${l}`).className = `px-3 py-1 text-xs rounded-md transition-all ${l === lang ? 'lang-active' : 'text-slate-400 hover:text-white'}`);
+            renderTable(taxonomyData);
+            updateCharts();
+            updateStats();
+        }
+
+        function updateStats() {
+            const total = taxonomyData.length;
+            const avgConf = (taxonomyData.reduce((acc, curr) => acc + curr.conf, 0) / total).toFixed(1);
+            const synonyms = taxonomyData.filter(d => d.status === "SYNONYM").length;
+            document.getElementById('stat_total_val').innerText = total;
+            document.getElementById('stat_conf_val').innerText = avgConf + "%";
+            document.getElementById('stat_syn_val').innerText = synonyms;
+        }
+
+        function renderTable(data) {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = data.map(item => {
+                const gbifUrl = `https://www.gbif.org/species/search?q=${encodeURIComponent(item.matched)}`;
+                return `
+                <tr class="hover:bg-slate-50 transition-colors group animate-fade">
+                    <td class="px-6 py-4 font-semibold text-xs text-indigo-600">${item.disease}</td>
+                    <td class="px-6 py-4 font-mono font-bold text-slate-800 text-xs">${item.clean}</td>
+                    <td class="px-6 py-4 italic text-slate-600">${item.matched}</td>
+                    <td class="px-6 py-4 text-center"><a href="${gbifUrl}" target="_blank" class="btn-audit" title="Verificar en GBIF">🌐</a></td>
+                    <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded-full text-[10px] font-bold ${item.conf >= 95 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${item.conf}%</span></td>
+                    <td class="px-6 py-4 text-center"><button onclick="runAIConsensus('${item.clean}')" class="text-indigo-600 hover:scale-125 transition-transform p-2 bg-indigo-50 rounded-lg opacity-0 group-hover:opacity-100">✨</button></td>
+                </tr>
+            `}).join('');
+        }
+
+        function filterData() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const filtered = taxonomyData.filter(i => {
+                const matches = i.clean.toLowerCase().includes(term) || i.disease.toLowerCase().includes(term);
+                return matches && (status === "ALL" || i.status === status);
+            });
+            renderTable(filtered);
+        }
+
+        function updateCharts() {
+            const ctx = document.getElementById('confidenceChart')?.getContext('2d');
+            if (!ctx) return;
+            if (confChart) confChart.destroy();
+            const high = taxonomyData.filter(d => d.conf >= 95).length, mid = taxonomyData.filter(d => d.conf >= 85 && d.conf < 95).length, low = taxonomyData.filter(d => d.conf < 85).length;
+            confChart = new Chart(ctx, { type: 'bar', data: { labels: ['>95%', '85-95%', '<85%'], datasets: [{ data: [high, mid, low], backgroundColor: ['#10b981', '#4f46e5', '#f59e0b'], borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 9 } } }, x: { grid: { display: false }, ticks: { font: { size: 9 } } } } } });
+        }
+
+        window.onload = () => setLanguage('es');
+    </script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+
+---
+title: "QA Report — SENEPA Tidy Dataset"
+author: "SENEPA / PINV01-528 Team"
+date: "`r format(Sys.time(), '%Y-%m-%d %H:%M:%S')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+  pdf_document:
+    toc: true
+    number_sections: true
+fontsize: 11pt
+lang: "en-GB"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(lubridate)
+library(sf)
+library(knitr)
+library(ggplot2)
+library(readr)
+library(plotly)
+
+if (!require('pacman'))
+  install.packages('pacman',
+                   repos = "http://cran.us.r-project.org"
+  )
+
+pacman::p_load(ENMeval,
+               tidyverse,
+               rio,
+               raster,
+               plotly,
+               dismo,
+               summarytools,
+               explore,
+               dlookr,
+               leaflet)
+
+```
+
+
+### Executive summary
+
+This report documents automated quality checks run against `data/processed_data/Dataset_Combinado.csv` (audited version). It quantifies common issues (invalid dates, coordinates outside Paraguay, exact duplicates, non-standard species names, missing critical fields), provides examples of problematic records, and produces reproducible artifacts (`reports/qa_summary.csv`, `logs/qa_examples.csv`, `logs/qa_report_metadata.csv`).
+
+---
+
+### 1 Methodology
+
+- **Automated checks**: expected columns and types; date range (1998–2023); coordinates within Paraguay bounds; exact duplicates (SPECIES + DATE + LAT + LONG); species name sanity checks; NA rates for critical fields; coherence between `GEOREFERENCING_TYPE` and `GEOREFERENCING_UNCERTAINTY_M` when present.
+- **Outputs**: summary tables, example records, plots (uncertainty histogram, spatial scatter), and metadata files for reproducibility.
+- **Reproducibility**: the report writes `reports/qa_summary.csv`, `logs/qa_examples.csv`, and `logs/qa_report_metadata.csv`.
+
+---
+
+### 2 Load dataset and metadata
+
+```{r load-data}
+dataset_path <- "../data/processed_data/SENEPA_tidy_data_set.csv"
+if (!file.exists(dataset_path)) stop("Dataset not found at: ", dataset_path)
+
+dataset <- readr::read_csv(dataset_path, show_col_types = FALSE, locale = locale(encoding = "UTF-8"))
+n_total <- nrow(dataset)
+cat("Rows loaded:", n_total, "\n")
+```
+
+---
+
+### 3 Checks and results
+
+#### 3.1 Expected columns and basic types
+
+
+```{r check-columns}
+expected_cols <- c("DEPARTMENT","DISTRICT","LOCALITY","YEAR","DATE","DISEASE","SPECIES",
+                   "UTM_ZONE","UTM_HEMISPHERE","UTM_X","UTM_Y","LAT","LONG","GEOREFERENCING_TYPE",
+                   "GEOREFERENCING_UNCERTAINTY_M","DATA_SOURCE")
+present_cols <- names(dataset)
+cols_missing <- setdiff(expected_cols, present_cols)
+cols_extra <- setdiff(present_cols, expected_cols)
+
+kable(tibble(
+  total_rows = n_total,
+  cols_present = length(present_cols),
+  cols_missing = paste(cols_missing, collapse = "; "),
+  cols_extra = paste(cols_extra, collapse = "; ")
+))
+```
+
+#### 3.2 Date parsing and range check
+
+```{r check-dates}
+dataset <- dataset %>%
+  mutate(DATE2 = suppressWarnings(as.Date(DATE))) %>%
+  mutate(YEAR2 = ifelse(!is.na(YEAR), as.numeric(YEAR), lubridate::year(DATE2)))
+
+bad_dates <- dataset %>%
+  filter((!is.na(DATE) & is.na(DATE2)) |
+         (!is.na(DATE2) & (DATE2 < as.Date("1998-01-01") | DATE2 > as.Date("2023-12-31"))))
+
+kable(tibble(
+  total_rows = n_total,
+  invalid_dates = nrow(bad_dates),
+  pct_invalid_dates = round(100 * nrow(bad_dates) / n_total, 3)
+))
+```
+
+#### 3.3 Coordinate bounds (Paraguay)
+
+```{r check-coords}
+lat_min <- -28; lat_max <- -19
+long_min <- -63; long_max <- -54
+
+dataset <- dataset %>%
+  mutate(LAT = as.numeric(LAT), LONG = as.numeric(LONG))
+
+bad_coords <- dataset %>%
+  filter((!is.na(LAT) & (LAT < lat_min | LAT > lat_max)) |
+         (!is.na(LONG) & (LONG < long_min | LONG > long_max)))
+
+kable(tibble(
+  total_rows = n_total,
+  invalid_coords = nrow(bad_coords),
+  pct_invalid_coords = round(100 * nrow(bad_coords) / n_total, 3)
+))
+```
+
+#### 3.4 Exact duplicates (SPECIES + DATE + LAT + LONG)
+
+```{r check-dups}
+dups <- dataset %>%
+  filter(!is.na(SPECIES)) %>%
+  group_by(SPECIES, DATE, LAT, LONG) %>%
+  filter(n() > 1) %>%
+  ungroup()
+
+kable(tibble(
+  total_rows = n_total,
+  exact_duplicates = nrow(dups),
+  pct_duplicates = round(100 * nrow(dups) / n_total, 3)
+))
+```
+
+#### 3.5 Species name sanity checks
+
+```{r check-species}
+bad_species <- dataset %>%
+  filter(is.na(SPECIES) | str_detect(SPECIES, regex("S/E|S/D|SIN DATOS|\\d", ignore_case = TRUE)))
+
+kable(tibble(
+  total_rows = n_total,
+  problematic_species = nrow(bad_species),
+  pct_problematic_species = round(100 * nrow(bad_species) / n_total, 3)
+))
+```
+
+#### 3.6 Missingness in critical fields
+
+```{r check-na}
+na_summary <- dataset %>%
+  summarise(
+    pct_na_species = mean(is.na(SPECIES)) * 100,
+    pct_na_date = mean(is.na(DATE2)) * 100,
+    pct_na_coords = mean(is.na(LAT) | is.na(LONG)) * 100,
+    pct_na_georef = ifelse("GEOREFERENCING_TYPE" %in% names(.), mean(is.na(GEOREFERENCING_TYPE)) * 100, NA_real_)
+  ) %>%
+  mutate(across(everything(), ~ round(., 3)))
+
+kable(na_summary)
+```
+
+---
+
+### 4 Visualizations
+
+#### 4.1 Uncertainty histogram (if available)
+
+```{r plot-uncertainty, fig.width=7, fig.height=4}
+if ("GEOREFERENCING_UNCERTAINTY_M" %in% names(dataset)) {
+  dataset %>%
+    filter(!is.na(GEOREFERENCING_UNCERTAINTY_M)) %>%
+    mutate(GU = as.numeric(GEOREFERENCING_UNCERTAINTY_M)) %>%
+    ggplot(aes(x = GU)) +
+    geom_histogram(bins = 40, fill = "#2b8cbe", color = "white") +
+    labs(x = "Georeferencing uncertainty (m)", y = "Frequency", title = "Distribution of spatial uncertainty")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Field GEOREFERENCING_UNCERTAINTY_M not available", cex = 1.1)
+}
+```
+
+#### 4.2 Simple spatial scatter of valid points
+
+```{r map-points, fig.width=7, fig.height=5}
+valid_points <- dataset %>% filter(!is.na(LAT) & !is.na(LONG))
+if (nrow(valid_points) > 0) {
+mapgg  = ggplot(valid_points, aes(x = LONG, y = LAT)) +
+    geom_point(alpha = 0.4, size = 0.8, color = "#e34a33") +
+    borders("world", xlim = c(-65, -50), ylim = c(-30, -15), colour = "gray80") +
+    coord_quickmap() +
+    labs(x = "Longitude", y = "Latitude", title = "Spatial distribution of valid records") 
+  ggplotly(mapgg)
+} else {
+  plot.new()
+  text(0.5, 0.5, "No valid coordinate points to map", cex = 1.1)
+}
+```
+
+### 4.3 densidad 
+
+
+```{r map-points, fig.width=7, fig.height=5}
+# Make a SpatialPoints object
+occs = dataset |> dplyr::select(LONG, LAT)|>
+  filter(!is.na(LAT) & !is.na(LONG))
+
+if (nrow(occs) > 0) {
+#summary(occs)
+
+fig <- occs
+fig <- fig %>%
+  plot_ly(
+    type = 'densitymapbox',
+    lat = ~LAT,
+    lon = ~LONG,
+    coloraxis = 'coloraxis',
+    radius = 10) 
+fig <- fig %>%
+  layout(mapbox= list(
+    style = "open-street-map",
+    zoom = 4,
+    center = list(lon = -58 ,lat= -25)
+  ))
+
+fig
+} else {
+  plot.new()
+  text(0.5, 0.5, "No valid coordinate points to map", cex = 1.1)
+}
+
+```
+
+---
+
+
+### 5 Examples of problematic records
+
+```{r examples}
+examples <- bind_rows(
+  head(bad_dates, 10),
+  head(bad_coords, 10),
+  head(bad_species, 10),
+  head(dups, 10)
+) %>%
+  distinct() %>%
+  slice_head(n = 50)
+
+if (!dir.exists("../logs")) dir.create("../logs", recursive = TRUE)
+readr::write_csv(examples, "../logs/qa_examples.csv")
+kable(head(examples, 10))
+```
+
+---
+
+### 6 Summary of findings and recommended actions
+
+```{r summary}
+qa_summary <- tibble(
+  total_rows = n_total,
+  invalid_dates = nrow(bad_dates),
+  invalid_coords = nrow(bad_coords),
+  exact_duplicates = nrow(dups),
+  problematic_species = nrow(bad_species),
+  pct_na_species = na_summary$pct_na_species,
+  pct_na_date = na_summary$pct_na_date,
+  pct_na_coords = na_summary$pct_na_coords
+)
+
+if (!dir.exists("../reports")) dir.create("../reports", recursive = TRUE)
+readr::write_csv(qa_summary, "../reports/qa_summary.csv")
+kable(qa_summary)
+```
+
+**Priority actions**
+- Correct transcription errors and sign mistakes in coordinates using `DATA_SOURCE` for traceability.
+- Normalize species names against a taxonomic dictionary and record mappings in the processing log.
+- Fix or mark invalid dates as NA and document decisions in `processing_log.csv`.
+- Resolve duplicates by retaining the record with the most precise georeference or most metadata.
+
+---
+
+### 7 QA metadata and reproducibility
+
+```{r metadata}
+qa_meta <- tibble(
+  report_generated = Sys.time(),
+  dataset_path = dataset_path,
+  dataset_rows = n_total,
+  qa_summary_path = "../reports/qa_summary.csv",
+  qa_examples_path = "../logs/qa_examples.csv",
+  operator = Sys.getenv("USER", unset = "unknown")
+)
+
+readr::write_csv(qa_meta, "../logs/qa_report_metadata.csv")
+session_info <- capture.output(sessionInfo())
+readr::write_lines(session_info, "../logs/qa_session_info.txt")
+```
+
+
+
+

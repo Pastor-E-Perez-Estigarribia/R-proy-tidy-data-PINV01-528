@@ -1,0 +1,251 @@
+---
+title: "QA Report - SENEPA Taxonomic QA"
+author: "SENEPA / PINV01-528 Team"
+date: "`r format(Sys.time(), '%Y-%m-%d %H:%M:%S')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+  pdf_document:
+    toc: true
+    number_sections: true
+fontsize: 11pt
+lang: "en-GB"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(lubridate)
+library(sf)
+library(ggplot2)
+library(openxlsx)
+library(readr)
+library(knitr)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+# Ensure qa_report() has been executed and res_qa is available in the environment:
+# res_qa <- qa_report(df = dataset_final_tax, tax_map = taxize_map, tax_ai = tax_AI, out_dir = "./logs/qa", name_prefix = "SENEPA_taxonomic_QA")
+```
+
+```{r executive-summary, echo=FALSE}
+# Ensure required objects and functions are available
+if (!exists("qa_report")) {
+  # Ajusta la ruta a tu script que define qa_report()
+  source("Scripts/12_qa_report.R")
+}
+
+# Try to load a cached res_qa if present
+cached_path <- "./logs/qa/res_qa_latest.rds"
+if (file.exists(cached_path)) {
+  res_qa <- tryCatch(readRDS(cached_path), error = function(e) NULL)
+}
+
+# If still missing, run qa_report() defensivamente
+if (!exists("res_qa") || is.null(res_qa)) {
+  message("res_qa not found: running qa_report() now. This may take a few minutes.")
+  res_qa <- tryCatch(
+    qa_report(
+      df = dataset_final,      # ensure dataset_final_tax exists in environment
+      out_dir = "./logs/qa",
+      name_prefix = "SENEPA_taxonomic_QA",
+      year_range = c(1950, 2026),
+      gbif_conf_threshold = 80,
+      add_log = add_log
+    ),
+    error = function(e) {
+      # write a short error file for traceability and stop knit with informative message
+      err_path <- file.path("logs/qa", paste0("qa_error_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".txt"))
+      if (!dir.exists(dirname(err_path))) dir.create(dirname(err_path), recursive = TRUE)
+      writeLines(c("qa_report() failed:", conditionMessage(e)), err_path)
+      stop("qa_report() failed. See: ", err_path)
+    }
+  )
+
+  # Save for future renders
+  try(saveRDS(res_qa, cached_path), silent = TRUE)
+}
+```
+
+
+### Executive summary
+
+```{r executive-summary, echo=FALSE}
+if (!exists("res_qa")) stop("Object res_qa not found. Run qa_report() before rendering this report.")
+overview <- res_qa$overview
+cat("QA generated:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n\n")
+kable(overview)
+```
+
+### Methodology
+
+```{r methodology, echo=FALSE}
+cat("This report summarizes automated checks applied to the processed dataset:\n\n")
+cat("- Date validation and temporal range checks.\n")
+cat("- Coordinate validation and spatial containment within Paraguay.\n")
+cat("- Exact duplicate detection by species + date + lat + long.\n")
+cat("- Taxonomic coverage checks against GBIF and AI-assisted mapping.\n")
+cat("- Identification of low-confidence taxonomic matches and incomplete binomials.\n")
+cat("- Export of summary sheets and CSVs with flags for manual review.\n")
+```
+
+### Results overview
+
+```{r results-overview}
+res_meta <- res_qa$meta
+kable(tibble::tibble(
+  report_generated = res_meta$report_generated,
+  dataset_rows = res_meta$dataset_rows,
+  report_path = res_meta$report_path
+))
+```
+
+### Dates and years
+
+```{r check-dates, fig.height=3}
+bad_dates <- res_qa$bad_dates
+kable(tibble::tibble(total_bad_dates = nrow(bad_dates)))
+if (nrow(bad_dates) > 0) {
+  kable(head(bad_dates, 10))
+}
+```
+
+### Coordinates and spatial containment
+
+```{r check-coords, fig.width=7, fig.height=5}
+bad_coords <- res_qa$bad_coords
+swap_candidates <- res_qa$swap_candidates
+
+kable(tibble::tibble(
+  invalid_coords = nrow(bad_coords),
+  swap_candidates = nrow(swap_candidates)
+))
+
+# Map valid vs problematic points
+dataset_points <- res_qa$bad_coords %>% select(LATn = LATn, LONGn = LONGn, SPECIES_CLEAN) %>% mutate(type = "invalid")
+valid_points <- tibble::tibble()
+if (exists("dataset_final_tax")) {
+  valid_points <- dataset_final_tax %>%
+    filter(!is.na(LAT) & !is.na(LONG)) %>%
+    mutate(LATn = as.numeric(LAT), LONGn = as.numeric(LONG)) %>%
+    select(LATn, LONGn, SPECIES_CLEAN) %>%
+    mutate(type = "valid")
+}
+
+pts_plot <- bind_rows(valid_points, dataset_points) %>% filter(!is.na(LATn) & !is.na(LONGn))
+
+if (nrow(pts_plot) > 0) {
+  world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+  ggplot() +
+    geom_sf(data = world, fill = "gray95", color = "gray80") +
+    geom_point(data = pts_plot %>% filter(type == "valid"), aes(x = LONGn, y = LATn), color = "#2b8cbe", alpha = 0.4, size = 0.6) +
+    geom_point(data = pts_plot %>% filter(type == "invalid"), aes(x = LONGn, y = LATn), color = "#e34a33", alpha = 0.8, size = 1.2) +
+    coord_quickmap(xlim = c(-65, -50), ylim = c(-30, -15)) +
+    labs(title = "Spatial distribution: valid points (blue) and problematic points (red)", x = "Longitude", y = "Latitude")
+} else {
+  plot.new(); text(0.5, 0.5, "No coordinate points available to map", cex = 1.1)
+}
+```
+
+### Exact duplicates
+
+```{r check-dups}
+dups <- res_qa$exact_dups
+kable(tibble::tibble(total_exact_duplicates = nrow(dups)))
+if (nrow(dups) > 0) {
+  kable(head(dups, 10))
+}
+```
+
+### Taxonomic checks
+
+```{r check-taxonomy}
+no_gbif <- res_qa$species_no_gbif
+low_conf <- res_qa$low_conf
+incomplete_binomial <- res_qa$incomplete_binomial
+compare_ai <- res_qa$compare_ai
+
+kable(tibble::tibble(
+  species_without_gbif = nrow(no_gbif),
+  species_low_confidence = nrow(low_conf),
+  incomplete_binomials = nrow(incomplete_binomial),
+  species_in_ai_map = ifelse(nrow(compare_ai) > 0, sum(compare_ai$IN_AI), NA_integer_)
+))
+
+if (nrow(no_gbif) > 0) {
+  write_csv(no_gbif, file.path("logs/qa", paste0("qa_no_gbif_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")))
+  kable(head(no_gbif, 20))
+}
+
+if (nrow(low_conf) > 0) {
+  write_csv(low_conf, file.path("logs/qa", paste0("qa_low_conf_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")))
+  kable(head(low_conf, 20))
+}
+
+if (nrow(incomplete_binomial) > 0) {
+  write_csv(incomplete_binomial, file.path("logs/qa", paste0("qa_incomplete_binomial_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")))
+  kable(head(incomplete_binomial, 20))
+}
+```
+
+### Summary by disease
+
+```{r summary-by-disease}
+by_disease <- res_qa$summary_by_disease
+kable(head(by_disease, 50))
+```
+
+### Examples and export
+
+```{r examples-and-export}
+examples_path <- file.path("logs/qa", paste0("qa_examples_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"))
+examples <- bind_rows(
+  head(res_qa$bad_dates, 10),
+  head(res_qa$bad_coords, 10),
+  head(res_qa$incomplete_binomial, 10),
+  head(res_qa$exact_dups, 10)
+) %>% distinct() %>% slice_head(n = 50)
+
+if (!dir.exists("logs/qa")) dir.create("logs/qa", recursive = TRUE)
+readr::write_csv(examples, examples_path)
+cat("Examples exported to:", examples_path, "\n")
+kable(head(examples, 20))
+```
+
+### Conclusions and recommended actions
+
+```{r conclusions, echo=FALSE}
+cat("Manual review priorities:\n")
+cat("1) Species without GBIF matches and low-confidence matches.\n")
+cat("2) Incomplete binomials and names flagged for manual correction.\n")
+cat("3) Coordinates outside bounds and potential LAT/LONG swaps.\n")
+cat("4) Exact duplicates to be resolved by selecting the record with the most precise georeference.\n\n")
+cat("Generated files are stored in logs/qa and reports for traceability. Record decisions in processing_log.csv.\n")
+```
+
+### Metadata and reproducibility
+
+```{r metadata}
+meta_path <- file.path("logs/qa", paste0("qa_metadata_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"))
+qa_meta <- tibble::tibble(
+  report_generated = Sys.time(),
+  dataset_rows = res_meta$dataset_rows,
+  report_path = res_meta$report_path,
+  examples_path = examples_path,
+  operator = Sys.getenv("USER", unset = "unknown")
+)
+readr::write_csv(qa_meta, meta_path)
+cat("Metadata saved to:", meta_path, "\n")
+session_info_path <- file.path("logs/qa", paste0("qa_sessioninfo_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".txt"))
+readr::write_lines(capture.output(sessionInfo()), session_info_path)
+cat("Session info saved to:", session_info_path, "\n")
+```
+
+```{r session-info, echo=FALSE}
+# Optionally print session info summary
+cat("R session info summary:\n")
+print(sessionInfo()[c("R.version", "platform", "running")])
+```
+

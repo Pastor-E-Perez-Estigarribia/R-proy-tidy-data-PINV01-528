@@ -1,0 +1,2 @@
+report_generated,dataset_path,dataset_rows,qa_summary_path,qa_examples_path,operator
+2026-03-25T22:55:51Z,../data/processed_data/SENEPA_tidy_data_set.csv,20295,../reports/qa_summary.csv,../logs/qa_examples.csv,unknown
