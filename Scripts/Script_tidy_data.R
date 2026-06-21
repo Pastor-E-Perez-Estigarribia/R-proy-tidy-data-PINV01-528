@@ -99,11 +99,12 @@ add_log("import",
         nrow(df_3),
         names(df_3))
 
-df_4 <- rio::import("data/raw_data/dataset_malariaPIV01.csv", encoding = "UTF-8")
+df_4 <- rio::import("data/raw_data/dataset_malariaPIV01.csv", encoding = "UTF-8") %>% 
+  subset(ESPECIES != "Ochlerotatus scapularis")
 add_log("import",
         "Imported dataset_malariaPIV01.csv",
         nrow(df_4),
-        names(df_4))
+        names(df_4)) 
 
 df_5 <- rio::import("./data/raw_data/BaseFA_2025.xlsx",
                     sheet = "Hoja1",
@@ -589,6 +590,8 @@ df_4_tidy <- df_4 %>%
 #    LONG = as.numeric(ifelse(LONG < -63 | LONG > -54, NA, LONG))
 #  )
 
+df_4_tidy = df_4_tidy %>% subset(ESPECIE != "OCHLEROTATUS SCAPULARIS")
+
 # ____________________________________________________________
 # Logging the transformation
 # ____________________________________________________________
@@ -743,7 +746,9 @@ df_5_tidy <- df_5 %>%
     LAT,
     LONG,
     TIPO_DE_GEORREFERENCIACION
-  ) #%>%
+  ) %>% bind_rows(.,df_4_tidy %>% subset(ESPECIE == "OCHLEROTATUS SCAPULARIS"))
+
+
 
 # Spatial validation: remove coordinates outside Paraguay bounds
 # dplyr::mutate(
@@ -781,6 +786,7 @@ add_log(
   rows_affected = nrow(df_5_tidy),
   variables = names(df_5_tidy)
 )
+
 
 # Optional inspection
 #View(df_5_tidy)
@@ -1169,24 +1175,6 @@ add_log(
 
 # Corregir errors ortograficos en departamentos ----
 
-# --- 0) Ajusta esta ruta si tu CSV está en otra carpeta ---
-data_path <- "data/processed_data/SENEPA_tidy_data_set.csv"
-
-# --- 1) Comprobar qué es 'df' y, si es función, reasignarlo leyendo el CSV ---
-if (exists("df")) {
-  cat("class(df):", paste(class(df), collapse = ", "), "\n")
-  if (is.function(df) || typeof(df) == "closure") {
-    message("'df' es una función. Se va a sobrescribir leyendo el CSV en: ",
-            data_path)
-    df <- readr::read_csv(data_path)
-  } else {
-    message("'df' existe y no es función; se usará tal cual.")
-  }
-} else {
-  message("'df' no existe. Leyendo CSV en: ", data_path)
-  df <- readr::read_csv(data_path)
-}
-
 # --- 2) Bloque seguro: normalizar DEPARTMENT, registrar log y crear dataset_final ---
 # Requisitos: dplyr, stringr, stringi, lubridate, readr
 if (!requireNamespace("dplyr", quietly = TRUE))
@@ -1254,7 +1242,7 @@ canonical <- c(
 )
 
 # Asegurar df como tibble
-df <- as_tibble(df)
+df <- as_tibble(dataset_final)
 
 # Normalizar y loggear
 df_work <- df %>%
@@ -1806,3 +1794,4 @@ add_log(
     "DATE"
   )
 )
+

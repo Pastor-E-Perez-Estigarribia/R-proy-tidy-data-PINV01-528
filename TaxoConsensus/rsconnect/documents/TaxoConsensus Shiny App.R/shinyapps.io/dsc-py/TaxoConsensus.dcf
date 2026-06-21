@@ -1,0 +1,12 @@
+name: TaxoConsensus
+title: TaxoConsensus
+username: dsc-py
+account: dsc-py
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17534321
+bundleId: 12155613
+url: https://dsc-py.shinyapps.io/TaxoConsensus/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

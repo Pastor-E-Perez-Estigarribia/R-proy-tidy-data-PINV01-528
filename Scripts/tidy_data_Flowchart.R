@@ -96,3 +96,7 @@ flujo_datos %>% export_svg() %>% charToRaw() %>%
   rsvg_svg("output/fig/data_workflow.svg")
 
 
+
+
+
+
