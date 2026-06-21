@@ -50,7 +50,8 @@ i18n <- list(
     table_title = "Explorador de Vectores",
     empty_ai = "Seleccione una especie en la tabla o busque una manualmente.",
     analyzing = "Analizando...",
-    error_empty_search = "Por favor, ingrese el nombre de un taxón primero."
+    error_empty_search = "Por favor, ingrese el nombre de un taxón primero.",
+    gbif_link = "🔗 Verificar en GBIF (Auditoría Manual)"
   ),
   en = list(
     title = "TaxoConsensus Hub 🔬",
@@ -69,7 +70,8 @@ i18n <- list(
     table_title = "Vector Explorer",
     empty_ai = "Select a species from the table or search manually.",
     analyzing = "Analyzing...",
-    error_empty_search = "Please enter a taxon name first."
+    error_empty_search = "Please enter a taxon name first.",
+    gbif_link = "🔗 Verify on GBIF (Manual Audit)"
   )
 )
 
@@ -206,15 +208,19 @@ server <- function(input, output, session) {
     
     ai_response(paste0("<div style='text-align:center;'><div class='spinner-border text-primary'></div><p>", t$analyzing, "</p></div>"))
     
-    # NUEVO PROMPT: Formato Taxonómico Estricto + Cero Alucinaciones + APA sin DOI
+    # NUEVO PROMPT: Integración de Data Integrity Protocols y AI Modules
     sys_prompt <- paste0(
       "Eres un experto entomólogo riguroso del proyecto ", PROJECT_ID, ". ",
-      "Tu objetivo es CERO ALUCINACIONES. Basate exclusivamente en hechos científicos comprobables. ",
+      "Tu objetivo es proporcionar resoluciones de estatus taxonómico a nivel experto. ",
       "Estructura tu respuesta estrictamente en estas 4 secciones: 1. Correct Name, 2. Justification, 3. Medical Importance, 4. References. ",
-      "REGLAS ESTRICTAS: ",
-      "- Para '1. Correct Name', debes usar ESTRICTAMENTE el formato taxonómico completo: Género (Subgénero) especie Autor, Año. (Ejemplo: Anopheles (Nyssorhynchus) albitarsis Lynch Arribálzaga, 1878). Si el subgénero no existe, omite los paréntesis. ",
-      "- Las referencias deben estar en formato APA puro, pero ESTRICTAMENTE SIN DOIs ni URLs (para evitar la generación de enlaces falsos). ",
-      "- ESTRICTAMENTE PROHIBIDO inventar o incluir taxonIDs o LSIDs. ",
+      "DEBES cumplir con los siguientes PROTOCOLOS DE INTEGRIDAD DE DATOS (Data Integrity Protocols): ",
+      "1. Hallucination Prevention: ESTRICTAMENTE PROHIBIDO inventar o incluir taxonIDs, LSIDs, DOIs o URLs. Las referencias deben estar en formato APA puro sin enlaces. Basate exclusivamente en hechos científicos comprobables. ",
+      "2. Manual Auditing: Tu respuesta debe ser precisa para facilitar la verificación experta manual posterior en la base de datos GBIF. ",
+      "3. Standardization: Utiliza terminología de mapeo alineada con los estándares Darwin Core (DwC). ",
+      "REGLAS ESPECÍFICAS DE RESOLUCIÓN TAXONÓMICA: ",
+      "- En '1. Correct Name': Usa ESTRICTAMENTE el formato taxonómico completo: Género (Subgénero) especie Autor, Año. (Ej. Anopheles (Nyssorhynchus) albitarsis Lynch Arribálzaga, 1878). Si no hay subgénero, omítelo. ",
+      "- En '2. Justification': Proporciona justificaciones de nivel experto para cambios nomenclaturales (ej. Lutzomyia a Nyssomyia), citando SIEMPRE autores y años. ",
+      "- En '3. Medical Importance': Mantén un enfoque estricto en la evidencia clínica y entomológica. ",
       "- OBLIGATORIO: Al final de tu documento, debes agregar exactamente esta nota en cursiva: ",
       "'⚠️ *Nota: Este recurso fue generado por un asistente de Inteligencia Artificial para el proyecto ", PROJECT_ID, " y puede contener errores. Se recomienda la validación con fuentes primarias.*' ",
       "Idioma de la respuesta: ", ifelse(current_lang()=="es", "Español", "English"), ". Formato Markdown."
@@ -223,7 +229,21 @@ server <- function(input, output, session) {
     tryCatch({
       # Pasamos el user_key capturado de la interfaz de usuario
       result <- call_gemini(paste("Resuelve:", species_name), sys_prompt, user_key = input$user_api_key)
-      ai_response(markdown::markdownToHTML(text = result, fragment.only = TRUE))
+      
+      # Convertir el Markdown a HTML
+      html_content <- markdown::markdownToHTML(text = result, fragment.only = TRUE)
+      
+      # Crear URL y botón de auditoría en GBIF
+      gbif_url <- paste0("https://www.gbif.org/species/search?q=", URLencode(species_name))
+      gbif_html <- paste0(
+        "<hr><div class='d-flex justify-content-end align-items-center mt-3'>",
+        "<a href='", gbif_url, "' target='_blank' class='btn btn-sm btn-outline-primary'>", t$gbif_link, "</a>",
+        "</div>"
+      )
+      
+      # Anexar el botón de GBIF al final de la respuesta
+      ai_response(paste0(html_content, gbif_html))
+      
     }, error = function(e) ai_response(paste("<div style='color:red;'><b>Error:</b>", e$message, "</div>")))
   }
   

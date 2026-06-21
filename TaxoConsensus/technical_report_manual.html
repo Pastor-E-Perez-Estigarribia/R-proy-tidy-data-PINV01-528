@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Report & User Manual: TaxoConsensus Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none; }
+            body { background-color: white; }
+            .shadow-lg { box-shadow: none; border: 1px solid #e5e7eb; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased py-10 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-8 sm:p-12 rounded-2xl shadow-lg border border-slate-100 relative">
+        
+        <!-- Print Button -->
+        <button onclick="window.print()" class="no-print absolute top-8 right-8 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print / PDF
+        </button>
+
+        <!-- Header -->
+        <header class="mb-12 border-b border-slate-200 pb-8">
+            <div class="flex items-center gap-4 mb-4">
+                <span class="text-4xl">🔬</span>
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Technical Report & User Manual</h1>
+            </div>
+            <h2 class="text-xl text-indigo-600 font-medium mb-4">TaxoConsensus Hub</h2>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
+                    Project: PINV01-528 | Epidemiological Vector Surveillance
+                </div>
+                <!-- App Link Button -->
+                <a href="https://dsc-py.shinyapps.io/TaxoConsensus/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm transition-all no-print">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    Access Live Web App
+                </a>
+                <!-- Printable Link (Only visible when printing) -->
+                <span class="hidden print:inline-block text-sm text-indigo-600 font-medium">
+                    Live App: https://dsc-py.shinyapps.io/TaxoConsensus/
+                </span>
+            </div>
+        </header>
+
+        <!-- Section 1: Description -->
+        <section class="mb-12">
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 border-l-4 border-indigo-500 pl-4">1. Application Description</h3>
+            <p class="text-slate-600 leading-relaxed mb-4">
+                <strong>TaxoConsensus Hub</strong> is an interactive web application developed in <strong>R Shiny</strong>. Its primary purpose is to assist researchers and epidemiologists in resolving the taxonomic status of medically important vectors and evaluating epidemiological risk.
+            </p>
+            <p class="text-slate-600 leading-relaxed">
+                The tool natively integrates generative artificial intelligence (Google Gemini) into the R environment, combining the rigor of classic data analysis with Natural Language Processing (NLP) capabilities, ensuring compliance with strict data integrity protocols.
+            </p>
+        </section>
+
+        <!-- Section 2: Features -->
+        <section class="mb-12">
+            <h3 class="text-2xl font-bold text-slate-900 mb-6 border-l-4 border-indigo-500 pl-4">2. Main Features</h3>
+            
+            <div class="space-y-8">
+                <!-- Subsection A -->
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-100">
+                    <h4 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="text-indigo-500">🛡️</span> A. Security and Auditing Architecture
+                    </h4>
+                    <ul class="list-disc list-inside text-slate-600 space-y-2 ml-2">
+                        <li><strong>Secure Authentication (<code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-sm">shinymanager</code>):</strong> Restricted access using credentials (e.g., <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-sm">evaluador</code> or <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-sm">admin</code> profiles).</li>
+                        <li><strong>Local Auditing (SQLite):</strong> Background logging system that records which user queries which species and at what time, ensuring traceability of AI usage.</li>
+                        <li><strong>BYOK Architecture (Bring Your Own Key):</strong> Allows users to input their own Gemini API Key, protecting the original project's billing quotas.</li>
+                    </ul>
+                </div>
+
+                <!-- Subsection B -->
+                <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100">
+                    <h4 class="text-lg font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                        <span>🧠</span> B. Artificial Intelligence Modules ("Zero Hallucinations")
+                    </h4>
+                    <ul class="list-disc list-inside text-slate-700 space-y-2 ml-2">
+                        <li><strong>Deterministic Prompting (Temp = 0.0):</strong> The model is configured to nullify "creativity," relying exclusively on verifiable scientific literature.</li>
+                        <li><strong>Semantic Grounding:</strong> Real-time connection with Google Search to cross-reference the LLM's internal knowledge base with updated taxonomic data.</li>
+                        <li><strong>Strict Formatting:</strong> Forces the AI to follow the Darwin Core (DwC) standard, generate references in APA format without DOIs/URLs (to avoid false links), and structure names as: <em>Genus (Subgenus) species Author, Year</em>.</li>
+                    </ul>
+                </div>
+
+                <!-- Subsection C -->
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-100">
+                    <h4 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="text-indigo-500">📊</span> C. Explorer and Validation
+                    </h4>
+                    <ul class="list-disc list-inside text-slate-600 space-y-2 ml-2">
+                        <li><strong>Dynamic Vector Table:</strong> Interactive visualization of the curated project dataset with filters by taxonomic status and free-text search.</li>
+                        <li><strong>Cross-Auditing (GBIF):</strong> Automatic generation of buttons with encoded hyperlinks to verify each AI finding directly in the <strong>GBIF</strong> database.</li>
+                        <li><strong>Internationalization (i18n):</strong> Bilingual interface (Spanish / English) that changes reactively without needing to reload the page.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Usage Guide -->
+        <section>
+            <h3 class="text-2xl font-bold text-slate-900 mb-6 border-l-4 border-indigo-500 pl-4">3. Usage Guide (Step-by-Step)</h3>
+            
+            <div class="relative border-l-2 border-slate-200 ml-3 md:ml-4 space-y-8 pb-4">
+                
+                <!-- Step 1 -->
+                <div class="relative pl-8">
+                    <div class="absolute w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold -left-[13px] top-1 border-4 border-white shadow-sm">1</div>
+                    <h4 class="text-lg font-bold text-slate-800 mb-2">Authentication and Configuration</h4>
+                    <ol class="list-decimal list-outside ml-4 text-slate-600 space-y-2">
+                        <li>Log in to the application using the assigned credentials (e.g., User: <code class="bg-slate-100 px-1 py-0.5 rounded text-sm">evaluador</code>).</li>
+                        <li>In the left sidebar (<strong>Configuration</strong>), paste your <strong>Gemini API Key</strong> in the indicated field. If you do not have one, click the link below it to generate one for free in Google AI Studio. If left blank, the app will attempt to use the server's public quota.</li>
+                        <li>Select your preferred language.</li>
+                    </ol>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="relative pl-8">
+                    <div class="absolute w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold -left-[13px] top-1 border-4 border-white shadow-sm">2</div>
+                    <h4 class="text-lg font-bold text-slate-800 mb-2">Vector Analysis</h4>
+                    <p class="text-slate-600 mb-2">There are two ways to analyze a taxon:</p>
+                    <ul class="list-disc list-outside ml-4 text-slate-600 space-y-2">
+                        <li><strong>Via Explorer:</strong> Click on any row in the central table (Vector Explorer).</li>
+                        <li><strong>Via Free Search:</strong> In the left sidebar, enter the name of an unlisted species (e.g., <em>Lutzomyia longipalpis</em>) and press the <strong>"🔍 Analyze Species"</strong> button.</li>
+                    </ul>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="relative pl-8">
+                    <div class="absolute w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold -left-[13px] top-1 border-4 border-white shadow-sm">3</div>
+                    <h4 class="text-lg font-bold text-slate-800 mb-2">Results Review and Auditing</h4>
+                    <ol class="list-decimal list-outside ml-4 text-slate-600 space-y-2">
+                        <li>Wait a few seconds while the assistant processes the information (an "Analyzing..." indicator will appear).</li>
+                        <li>Read the result in the <strong>AI Assistant</strong> panel. The response will be structured into:
+                            <ul class="list-disc list-inside ml-4 mt-2 text-slate-500">
+                                <li><em>Correct Name</em> (Strict taxonomic format).</li>
+                                <li><em>Justification</em> (With bibliographic citations).</li>
+                                <li><em>Medical Importance</em>.</li>
+                                <li><em>References</em>.</li>
+                            </ul>
+                        </li>
+                        <li class="mt-2"><strong>Final Audit:</strong> Click the <strong>"🔗 Verify on GBIF"</strong> button generated at the end of the response to cross-reference the AI's validation with official primary biodiversity records.</li>
+                    </ol>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-slate-200 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+            <p>Generated for project PINV01-528. Confidential & Scientific Use Only.</p>
+            <a href="https://dsc-py.shinyapps.io/TaxoConsensus/" class="text-indigo-500 hover:text-indigo-700 underline no-print">https://dsc-py.shinyapps.io/TaxoConsensus/</a>
+        </footer>
+
+    </div>
+
+</body>
+</html>
