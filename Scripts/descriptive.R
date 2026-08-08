@@ -491,7 +491,9 @@ final_manuscript_table <- bind_rows(contingency_table, column_totals)
 
 # 7. Imprimir en formato Markdown limpio en tu consola
 print("--- COPIA Y PEGA ESTA TABLA EN TU BORRADOR ---")
-kable(final_manuscript_table, format = "markdown")
+
+
+rio::export(final_manuscript_table,"output/table/manuscript_table_dess_DEPARTMENT.txt")
 
 
 
