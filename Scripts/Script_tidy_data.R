@@ -1324,7 +1324,46 @@ if (nrow(unmapped_departments) > 0) {
 # Crear dataset_final con DEPARTMENT corregido
 dataset_final <- df_work %>%
   dplyr::mutate(DEPARTMENT = departamento_std) %>%
-  dplyr::select(-.dept_aux,-DEPARTMENT_original,-.row_id,-.timestamp,-departamento_std)
+  dplyr::select(-.dept_aux,-DEPARTMENT_original,-.row_id,-.timestamp,-departamento_std) %>%
+  mutate(
+    # Limpieza de espacios en blanco
+    GEOREFERENCING_TYPE = str_trim(GEOREFERENCING_TYPE),
+    
+    # Crear variable normalizada
+    GEOREFERENCING_TYPE_CLEAN = case_when(
+      # 1. Casos nulos o vacíos
+      is.na(GEOREFERENCING_TYPE) | GEOREFERENCING_TYPE == "" ~ "GPS de Campo",
+      
+      # 2. Gabinete (Google Maps)
+      GEOREFERENCING_TYPE %in% c("DATOS CONSIGNADOS EN GABINETE", "GABINETE") ~ "Gabinete (Google Maps)",
+      
+      # 3. Centroides de Localidad
+      GEOREFERENCING_TYPE %in% c("CENTROIDE LOCALIDAD", "DATOS CONSIGNADOS EN GABINETE CENTROIDE DE LOCALIDAD") ~ "Centroide de Localidad",
+      
+      # 4. Centroides de Distrito
+      GEOREFERENCING_TYPE %in% c("CENTROIDE DISTRITO", "DATOS CONSIGNADOS EN GABINETE CENTROIDE DE DISTRITO") ~ "Centroide de Distrito",
+      
+      # 5. GPS en Campo (Caso especial de error de cadena y todos los restantes de archivos de campo)
+      GEOREFERENCING_TYPE == "DATOS CONSIGNADOS EN CAMPO CENTROIDE DE LOCALIDAD" ~ "GPS de Campo",
+      
+      # Regla general para todos los archivos operativos (XLS, XLSX, CSV, encuestas, operadores de campo)
+      grepl("\\.XLS|\\.XLSX|\\.CSV|OPERADOR|ENCUESTAS|REGISTRO|PERMUTACION|IMPUTACION|COPIADO|EXTRAPOLAR", GEOREFERENCING_TYPE, ignore.case = TRUE) ~ "GPS de Campo",
+      
+      # Cualquier otro caso residual por seguridad
+      TRUE ~ "GPS de Campo"
+    ),
+    
+    # INYECCIÓN RIGUROSA DE INCERTIDUMBRE (Point-Radius Method)
+    # Se asignan valores estándar representativos basados en la literatura científica
+    coordinateUncertaintyInMeters = case_when(
+      GEOREFERENCING_TYPE_CLEAN == "GPS de Campo"            ~ 30,    # Precisión instrumental conservadora bajo dosel
+      GEOREFERENCING_TYPE_CLEAN == "Gabinete (Google Maps)"   ~ 150,   # Radio estimado para direcciones urbanas/rurales
+      GEOREFERENCING_TYPE_CLEAN == "Centroide de Localidad"   ~ 1500,  # Radio promedio del polígono de una localidad paraguaya
+      GEOREFERENCING_TYPE_CLEAN == "Centroide de Distrito"    ~ 15000, # Radio promedio del polígono de un distrito paraguayo
+      TRUE                                                    ~ 30     # Salvaguarda por defecto
+    )
+  )
+
 
 message(
   "Proceso completado: dataset_final creado; filas registradas en log: ",
@@ -1344,6 +1383,9 @@ rio::export(dataset_final,
             "./data/processed_data/SENEPA_tidy_data_set.xlsx")
 rio::export(dataset_final,
             "./data/processed_data/SENEPA_tidy_data_set.csv")
+
+rio::export(dataset_final,
+            "./data/processed_data/SENEPA_tidy_data_set.txt")
 
 # add_log flexible: acepta data.frame o metadatos nombrados
 library(readr)

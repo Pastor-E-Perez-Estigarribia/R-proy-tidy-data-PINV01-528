@@ -366,6 +366,134 @@ summarytools::view(
   file = paste("./", "summary.html", sep = "")
 )
 
+# Cargar librerías necesarias
+library(dplyr)
+library(tidyr)
+
+#df = rio::import('data/processed_data/SENEPA_tidy_data_set.csv',
+#                 encoding = "UTF-8")
+
+# Leer el dataset final consolidado
+# Nota: "S/D", "SIN DATOS" y "0" ya fueron convertidos a NA durante la limpieza [6]
+data <- read.csv("data/processed_data/SENEPA_tidy_data_set.csv", na.strings = c("NA", "", "S/D", "SIN DATOS"))
+
+# --- 1. Calcular el número total de registros ----
+total_records <- nrow(data)
+message("Total de registros en el dataset: ", total_records)
+
+# --- 2. Análisis de Completitud / Missingness ----
+completeness_summary <- data %>%
+  summarise(
+    # Administrativos y Taxonómicos
+    dept_na = sum(is.na(DEPARTMENT)),
+    dist_na = sum(is.na(DISTRICT)),
+    loc_na  = sum(is.na(LOCALITY)),
+    spec_na = sum(is.na(SPECIES_AI_Correct)),
+    # Temporales
+    year_na = sum(is.na(YEAR)),
+    date_na = sum(is.na(DATE)),
+    # Coordenadas
+    lat_na  = sum(is.na(LAT)),
+    long_na = sum(is.na(LONG))
+  ) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Missing_Count") %>%
+  mutate(
+    Missing_Percentage = (Missing_Count / total_records) * 100,
+    Completeness_Percentage = 100 - Missing_Percentage
+  )
+
+print("--- Resumen de Completitud de Variables Críticas ---")
+print(completeness_summary)
+
+rio::export(completeness_summary,"output/table/completeness_summary.txt")
+
+# --- 3. Desglose de Procedencia Georreferenciación (GEOREFERENCING_TYPE) ----
+
+
+georef_breakdown <- data %>%
+  group_by(GEOREFERENCING_TYPE) %>%
+  summarise(
+    Count = n(),
+    Percentage = (n() / total_records) * 100
+  ) %>%
+  arrange(desc(Count))
+
+print("--- Desglose de Tipos de Georreferenciación ---")
+print(georef_breakdown)
+
+rio::export(georef_breakdown,"output/table/georef_breakdown.txt")
+
+
+# Aplicar la normalización lógica de georreferenciación
+data_cleaned <- data %>%
+  mutate(
+    # Limpieza de espacios en blanco
+    GEOREFERENCING_TYPE = str_trim(GEOREFERENCING_TYPE),
+    
+    # Crear variable normalizada
+    GEOREFERENCING_TYPE_CLEAN = case_when(
+      # 1. Casos nulos o vacíos
+      is.na(GEOREFERENCING_TYPE) | GEOREFERENCING_TYPE == "" ~ "GPS de Campo",
+      
+      # 2. Gabinete (Google Maps)
+      GEOREFERENCING_TYPE %in% c("DATOS CONSIGNADOS EN GABINETE", "GABINETE") ~ "Gabinete (Google Maps)",
+      
+      # 3. Centroides de Localidad
+      GEOREFERENCING_TYPE %in% c("CENTROIDE LOCALIDAD", "DATOS CONSIGNADOS EN GABINETE CENTROIDE DE LOCALIDAD") ~ "Centroide de Localidad",
+      
+      # 4. Centroides de Distrito
+      GEOREFERENCING_TYPE %in% c("CENTROIDE DISTRITO", "DATOS CONSIGNADOS EN GABINETE CENTROIDE DE DISTRITO") ~ "Centroide de Distrito",
+      
+      # 5. GPS en Campo (Caso especial de error de cadena y todos los restantes de archivos de campo)
+      GEOREFERENCING_TYPE == "DATOS CONSIGNADOS EN CAMPO CENTROIDE DE LOCALIDAD" ~ "GPS de Campo",
+      
+      # Regla general para todos los archivos operativos (XLS, XLSX, CSV, encuestas, operadores de campo)
+      grepl("\\.XLS|\\.XLSX|\\.CSV|OPERADOR|ENCUESTAS|REGISTRO|PERMUTACION|IMPUTACION|COPIADO|EXTRAPOLAR", GEOREFERENCING_TYPE, ignore.case = TRUE) ~ "GPS de Campo",
+      
+      # Cualquier otro caso residual por seguridad
+      TRUE ~ "GPS de Campo"
+    )
+  )
+
+# Verificar que se hayan agrupado correctamente
+table(data_cleaned$GEOREFERENCING_TYPE_CLEAN, useNA = "always")
+
+# Cargar librerías necesarias
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+
+# 2. Reemplazar NAs en el departamento para que la tabla sea 100% transparente
+data_table <- data %>%
+  mutate(DEPARTMENT = if_else(is.na(DEPARTMENT) | DEPARTMENT == "", "Not specified", DEPARTMENT))
+
+# 3. Calcular la tabla cruzada de contingencia
+contingency_table <- data_table %>%
+  group_by(DEPARTMENT, DISEASE) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = DISEASE, values_from = Count, values_fill = 0)
+
+# 4. Calcular el Total por Fila (departamento)
+contingency_table <- contingency_table %>%
+  rowwise() %>%
+  mutate(Total_Row = sum(c_across(where(is.numeric)))) %>%
+  ungroup() %>%
+  arrange(desc(Total_Row)) # Ordenar de mayor a menor muestreo
+
+# 5. Calcular los Totales por Columna (enfermedad)
+column_totals <- contingency_table %>%
+  summarise(across(where(is.numeric), sum)) %>%
+  mutate(DEPARTMENT = "TOTAL")
+
+# 6. Unir los datos con la fila de totales
+final_manuscript_table <- bind_rows(contingency_table, column_totals)
+
+# 7. Imprimir en formato Markdown limpio en tu consola
+print("--- COPIA Y PEGA ESTA TABLA EN TU BORRADOR ---")
+kable(final_manuscript_table, format = "markdown")
+
+
 
 # Diccionario de datos ----
 
