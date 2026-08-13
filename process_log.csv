@@ -205,3 +205,15 @@ timestamp,step,description,rows_affected,variables,extra
 2026-08-08 22:27:07.189856,NA,NA,NA,NA,NA
 2026-08-08 22:27:07.199036,NA,NA,NA,NA,NA
 2026-08-08 22:27:07.222766,qa_integration,QA report executed; outputs: ./logs/qa/SENEPA_taxonomic_QA_report_20260808_192706.xlsx,20294,"[""SPECIES_CLEAN"",""SPECIES_MATCHED"",""CONFIDENCE"",""LAT"",""LONG"",""DATE""]",NA
+2026-08-13 23:32:14.885373,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20294,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""GEOREFERENCING_TYPE_CLEAN"",""coordinateUncertaintyInMeters""]","{""files"":[""dataset_final.csv"",""dataset_final.xlsx""]}"
+2026-08-13 23:32:15.019341,export_combined_dataset,Exported final merged dataset (XLSX + CSV) using rio::export.,20294,"[""DEPARTMENT"",""DISTRICT"",""LOCALITY"",""YEAR"",""DATE"",""DISEASE"",""SPECIES_RAW"",""UTM_ZONE"",""UTM_HEMISPHERE"",""UTM_X"",""UTM_Y"",""LAT"",""LONG"",""GEOREFERENCING_TYPE"",""DATA_SOURCE"",""SPECIES_CLEAN"",""SPECIES_MATCHED"",""STATUS"",""CONFIDENCE"",""KINGDOM"",""PHYLUM"",""ORDER"",""FAMILY"",""GENUS"",""SPECIES"",""SPECIES_AI_Correct"",""Justification"",""GEOREFERENCING_TYPE_CLEAN"",""coordinateUncertaintyInMeters""]",NA
+2026-08-13 23:32:15.297662,export_sessionInfo,"Exported sessionInfo to files: sessionInfo_20260813_203215.txt, sessionInfo_20260813_203215.rds",NA,"[""R.version"",""loadedNamespaces""]",NA
+2026-08-13 23:32:16.100226,NA,NA,NA,NA,NA
+2026-08-13 23:32:16.188953,NA,NA,NA,NA,NA
+2026-08-13 23:32:16.210912,NA,NA,NA,NA,NA
+2026-08-13 23:32:16.506065,NA,NA,NA,NA,NA
+2026-08-13 23:32:16.625431,NA,NA,NA,NA,NA
+2026-08-13 23:32:16.995148,NA,NA,NA,NA,NA
+2026-08-13 23:32:17.491099,NA,NA,NA,NA,NA
+2026-08-13 23:32:17.495899,NA,NA,NA,NA,NA
+2026-08-13 23:32:17.511669,qa_integration,QA report executed; outputs: ./logs/qa/SENEPA_taxonomic_QA_report_20260813_203217.xlsx,20294,"[""SPECIES_CLEAN"",""SPECIES_MATCHED"",""CONFIDENCE"",""LAT"",""LONG"",""DATE""]",NA
