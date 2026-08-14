@@ -202,7 +202,7 @@ pry_adm1 <- geodata::gadm(country = "PRY",
                           level = 1,
                           path = tempdir())
 # gadm devuelve un sf; renombrar si hace falta
-pry_adm1 <- st_as_sf(pry_adm1)
+#pry_adm1 <- st_as_sf(pry_adm1)
 
 # 2) Preparar datos de puntos
 #    Ajusta nombres de columnas si son diferentes.
